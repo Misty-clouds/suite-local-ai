@@ -1,0 +1,64 @@
+@import "@suite/config/tailwind/base.css";
+
+@theme inline {
+  --font-sans: var(--font-satoshi);
+
+  /* Brand Colors */
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-muted: var(--brand-primary-muted);
+  --color-brand-primary-text: var(--brand-primary-text);
+  --color-brand-secondary: var(--brand-secondary);
+
+  /* App Surfaces */
+  --color-app-bg: var(--app-bg);
+  --color-app-surface: var(--app-surface);
+  --color-app-card: var(--app-card);
+  --color-app-card-hover: var(--app-card-hover);
+  --color-app-card-alt: var(--app-card-alt);
+  
+  /* Borders */
+  --color-app-border: var(--app-border);
+  --color-app-border-muted: var(--app-border-muted);
+  
+  /* Text */
+  --color-app-text-main: var(--app-text-main);
+  --color-app-text-muted: var(--app-text-muted);
+  --color-app-text-dim: var(--app-text-dim);
+  --color-app-text-light: var(--app-text-light);
+
+  /* Status */
+  --color-app-danger: var(--app-danger);
+  --color-app-danger-hover: var(--app-danger-hover);
+  --color-app-danger-light: var(--app-danger-light);
+}
+
+:root {
+  --brand-primary: #0055FF;
+  --brand-primary-muted: #0f3470;
+  --brand-primary-text: #4b7fc7;
+  --brand-secondary: #FF8080;
+  
+  --app-bg: #0A0A0A;
+  --app-surface: #111111;
+  --app-card: #161616;
+  --app-card-hover: #202020;
+  --app-card-alt: #1C1C1C;
+  
+  --app-border: #272727;
+  --app-border-muted: rgba(255, 255, 255, 0.05);
+  
+  --app-text-main: #FFFFFF;
+  --app-text-muted: #6E7B82; /* zinc-400 */
+  --app-text-dim: #71717A;   /* zinc-500 */
+  --app-text-light: #EAEAEA;
+
+  --app-danger: #830909;
+  --app-danger-hover: #a10e0e;
+  --app-danger-light: #ff7676;
+}
+
+body {
+  font-family: var(--font-satoshi), sans-serif;
+  background-color: var(--app-bg);
+  color: #FFFFFF;
+}

@@ -1,0 +1,20 @@
+{
+  "extends": "@suite/config/tsconfig/nextjs",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"],
+      "@suite/types": ["../../packages/types/src/index.ts"],
+      "@suite/ui": ["../../packages/ui/src/index.ts"],
+      "@suite/utils": ["../../packages/utils/src/index.ts"],
+      "@suite/sdk": ["../../packages/sdk/src/index.ts"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

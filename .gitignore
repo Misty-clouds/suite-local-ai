@@ -1,0 +1,53 @@
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules
+.pnpm-store
+
+# ─── Build outputs ────────────────────────────────────────────────────────────
+dist
+build
+.next
+out
+
+# ─── Turbo ────────────────────────────────────────────────────────────────────
+.turbo
+
+# ─── Env files ────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+# Allow examples
+!.env.example
+
+# ─── Secrets / Credentials ────────────────────────────────────────────────────
+*firebase-adminsdk*.json
+*-service-account*.json
+*.pem
+*.key
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+coverage
+
+# ─── OS / Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ─── Next.js ──────────────────────────────────────────────────────────────────
+.next/
+next-env.d.ts
+
+# ─── NestJS ───────────────────────────────────────────────────────────────────
+apps/api/dist/
+
+# ─── Flutter ──────────────────────────────────────────────────────────────────
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+
+# kiro

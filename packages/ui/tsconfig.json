@@ -1,0 +1,9 @@
+{
+  "extends": "@suite/config/tsconfig/nextjs",
+  "compilerOptions": {
+    "paths": {
+      "@suite/types": ["../types/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

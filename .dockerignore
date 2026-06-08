@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.turbo
+**/build
+**/*.log
+**/.env
+**/.env.local
+**/.env.production
+.git
+.gitignore
+README.md
+apps/mobile

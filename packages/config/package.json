@@ -1,0 +1,20 @@
+{
+  "name": "@suite/config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared configuration: tsconfig, eslint, tailwind, prettier",
+  "exports": {
+    "./tsconfig/base": "./tsconfig/base.json",
+    "./tsconfig/nextjs": "./tsconfig/nextjs.json",
+    "./tsconfig/nestjs": "./tsconfig/nestjs.json",
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/next": "./eslint/next.js",
+    "./tailwind/base": "./tailwind/base.ts",
+    "./tailwind/base.css": "./tailwind/base.css"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4",
+    "typescript": "^5.7.3",
+    "@types/node": "^20.19.0"
+  }
+}

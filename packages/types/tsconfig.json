@@ -1,0 +1,9 @@
+{
+  "extends": "@suite/config/tsconfig/base",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}
