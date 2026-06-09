@@ -6,8 +6,7 @@ import Header from "@/components/Header";
 import RightPanel from "@/components/RightPanel";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import { OverviewCharts } from "@/components/charts/OverviewCharts";
-import { TransactionsTable } from "@/components/TransactionsTable";
-import { transactionsData } from "@/lib/chartData";
+import { TransactionsTab } from "@/components/TransactionsTab";
 import { BudgetTab } from "./financials/tabs/BudgetTab";
 import { TaxTab } from "./financials/tabs/TaxTab";
 import { AccountsTab } from "./financials/tabs/AccountsTab";
@@ -55,8 +54,7 @@ export default function Home() {
             {activeTab === "analytics" && <OverviewCharts />}
 
             {activeTab === "transactions" && (
-              <TransactionsTable
-                transactions={transactionsData}
+              <TransactionsTab
                 onNewTransaction={() => setIsAddModalOpen(true)}
               />
             )}

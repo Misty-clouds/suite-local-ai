@@ -12,6 +12,11 @@ import { UsersModule } from './users/users.module';
 import { ClientsModule } from './clients/clients.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { ReportsModule } from './reports/reports.module';
+import { TasksModule } from './tasks/tasks.module';
+import { AgentModule } from './agent/agent.module';
+import { ToolsModule } from './tools/tools.module';
+import { PlaidModule } from './plaid/plaid.module';
 
 @Module({
   imports: [
@@ -29,6 +34,11 @@ import { BudgetsModule } from './budgets/budgets.module';
     ClientsModule,
     InvoicesModule,
     BudgetsModule,
+    ReportsModule,
+    TasksModule,
+    AgentModule,
+    ToolsModule,
+    PlaidModule,
   ],
   controllers: [AppController],
   providers: [

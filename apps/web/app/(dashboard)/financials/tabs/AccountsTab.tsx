@@ -1,30 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Shield, Eye, RefreshCw, Search, ChevronRight } from "lucide-react";
-
-type ProviderKind = "Commercial bank" | "Mobile money";
-
-interface Provider {
-  name: string;
-  kind: ProviderKind;
-  /** Local logo path; when absent, an initials avatar is shown. */
-  logo?: string;
-  initials?: string;
-}
-
-const PROVIDERS: Provider[] = [
-  { name: "Wells Fargo", kind: "Commercial bank", logo: "/assets/images/banks/wells-fargo.png" },
-  { name: "Chase", kind: "Commercial bank", logo: "/assets/images/banks/chase.jpg" },
-  { name: "Bank of America", kind: "Commercial bank", initials: "BA" },
-  { name: "Access Bank", kind: "Commercial bank", initials: "AC" },
-  { name: "Citibank", kind: "Commercial bank", initials: "CI" },
-  { name: "Capital One", kind: "Commercial bank", initials: "CO" },
-  { name: "MTN MoMo", kind: "Mobile money", logo: "/assets/images/banks/mtn-momo.jpg" },
-  { name: "Airtel Money", kind: "Mobile money", initials: "AM" },
-  { name: "GTBank", kind: "Commercial bank", initials: "GT" },
-];
+import { useCallback, useEffect, useState } from "react";
+import {
+  usePlaidLink,
+  type PlaidLinkOnSuccessMetadata,
+} from "react-plaid-link";
+import {
+  Shield,
+  Eye,
+  RefreshCw,
+  Building2,
+  Plus,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import type { BankAccount } from "@suite/types";
+import { plaidApi } from "@/lib/plaid-api";
 
 const HOW_IT_WORKS = [
   {
@@ -50,13 +41,83 @@ const HOW_IT_WORKS = [
   },
 ];
 
-export function AccountsTab() {
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+function formatBalance(value?: number | null, currency?: string): string {
+  if (value == null) return "—";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(value);
+  } catch {
+    return value.toLocaleString();
+  }
+}
 
-  const filtered = PROVIDERS.filter((p) =>
-    p.name.toLowerCase().includes(query.trim().toLowerCase()),
+export function AccountsTab() {
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadAccounts = useCallback(async () => {
+    try {
+      setAccounts(await plaidApi.listAccounts());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load accounts");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load + fetch a Plaid Link token.
+  useEffect(() => {
+    void loadAccounts();
+    plaidApi
+      .createLinkToken()
+      .then(setLinkToken)
+      .catch((e) =>
+        setError(
+          e instanceof Error
+            ? `Plaid not ready: ${e.message}`
+            : "Plaid not ready",
+        ),
+      );
+  }, [loadAccounts]);
+
+  const onSuccess = useCallback(
+    async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
+      setBusy(true);
+      setError(null);
+      try {
+        await plaidApi.exchange(
+          publicToken,
+          metadata.institution?.name ?? undefined,
+        );
+        await loadAccounts();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not connect bank");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadAccounts],
   );
+
+  const { open, ready } = usePlaidLink({ token: linkToken, onSuccess });
+
+  const handleSync = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await plaidApi.sync();
+      await loadAccounts();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [loadAccounts]);
 
   return (
     <div className="flex p-6 lg:min-h-[calc(100vh-116px)]">
@@ -107,82 +168,93 @@ export function AccountsTab() {
           </div>
         </div>
 
-        {/* Right — provider list */}
+        {/* Right — connected accounts */}
         <div className="flex flex-1 flex-col gap-3 border-t border-[#272727] p-6 lg:border-l lg:border-t-0">
-          <p className="text-[12px] font-medium text-[#6E7B82]">SELECT PROVIDER</p>
-
-          {/* Search */}
-          <div className="flex items-center gap-2.5 rounded-full bg-[#1A1A1A] px-4 py-3 shadow-sm">
-            <Search size={16} className="shrink-0 text-[#6E7B82]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              className="w-full bg-transparent text-[14px] text-[#DEDEDE] placeholder-[#6E7B82] focus:outline-none"
-            />
-          </div>
-
-          {/* List */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-hide lg:max-h-none max-h-[360px]">
-            {filtered.length === 0 ? (
-              <p className="py-8 text-center text-[13px] text-[#6E7B82]">
-                No providers found
-              </p>
-            ) : (
-              filtered.map((p, i) => {
-                const isLast = i === filtered.length - 1;
-                const isSelected = selected === p.name;
-                return (
-                  <button
-                    key={p.name + i}
-                    onClick={() => setSelected(p.name)}
-                    className={`group flex items-center gap-3 py-3 text-left transition-colors ${
-                      isLast ? "" : "border-b border-[#3B3B3B]"
-                    }`}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {p.logo ? (
-                        <Image
-                          src={p.logo}
-                          alt={p.name}
-                          width={32}
-                          height={32}
-                          className="size-8 shrink-0 rounded-[8px] object-contain"
-                        />
-                      ) : (
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-[#023483] text-[14px] font-medium text-[#66A4FF]">
-                          {p.initials}
-                        </div>
-                      )}
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <p
-                          className={`truncate text-[14px] font-medium leading-[1.1] ${
-                            isSelected ? "text-white" : "text-[#DEDEDE]"
-                          }`}
-                        >
-                          {p.name}
-                        </p>
-                        <p className="text-[12px] leading-[1.2] text-[#6E7B82]">
-                          {p.kind}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight
-                      size={14}
-                      className="shrink-0 text-[#6E7B82] transition-colors group-hover:text-[#DEDEDE]"
-                    />
-                  </button>
-                );
-              })
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] font-medium text-[#6E7B82]">
+              YOUR ACCOUNTS
+            </p>
+            {accounts.length > 0 && (
+              <button
+                onClick={handleSync}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg border border-[#272727] px-2.5 py-1 text-[11px] text-zinc-400 transition-colors hover:text-white disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={11}
+                  className={busy ? "animate-spin" : ""}
+                />
+                Sync
+              </button>
             )}
           </div>
 
-          {selected && (
-            <p className="text-[12px] text-[#6E7B82]">
-              Selected <span className="text-[#DEDEDE]">{selected}</span> —
-              connection flow coming soon.
-            </p>
+          {/* Connect button */}
+          <button
+            onClick={() => open()}
+            disabled={!ready || busy}
+            className="flex items-center justify-center gap-2 rounded-full bg-[#045DDF] px-4 py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#034BBB] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Plus size={16} />
+            )}
+            {accounts.length > 0 ? "Connect another bank" : "Connect a bank"}
+          </button>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-[#3a2222] bg-[#1f1414] px-3 py-2 text-[12px] text-[#FF8080]">
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
+
+          {/* Accounts list */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-hide max-h-[360px] lg:max-h-none">
+            {loading ? (
+              <div className="flex flex-1 items-center justify-center py-10 text-zinc-600">
+                <Loader2 size={18} className="animate-spin" />
+              </div>
+            ) : accounts.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center">
+                <Building2 size={24} className="text-zinc-600" />
+                <p className="text-[13px] text-[#6E7B82]">
+                  No accounts connected yet.
+                </p>
+              </div>
+            ) : (
+              accounts.map((a, i) => (
+                <div
+                  key={a.id}
+                  className={`flex items-center gap-3 py-3 ${
+                    i === accounts.length - 1 ? "" : "border-b border-[#3B3B3B]"
+                  }`}
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[#1A2A3F] text-[#66A4FF]">
+                    <Building2 size={16} />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <p className="truncate text-[14px] font-medium leading-[1.1] text-[#DEDEDE]">
+                      {a.name}
+                      {a.mask ? (
+                        <span className="text-[#6E7B82]"> ••{a.mask}</span>
+                      ) : null}
+                    </p>
+                    <p className="text-[12px] leading-[1.2] text-[#6E7B82]">
+                      {a.institutionName ?? a.subtype ?? a.type ?? "Account"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[14px] font-medium text-[#DEDEDE]">
+                      {formatBalance(a.currentBalance, a.isoCurrency)}
+                    </p>
+                    <p className="text-[11px] text-[#6E7B82]">Balance</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

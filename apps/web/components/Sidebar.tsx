@@ -10,6 +10,7 @@ import {
   Search,
   Command,
   CreditCard,
+  Sparkles,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ export default function Sidebar() {
     {
       title: "OPERATIONS",
       items: [
+        { name: "Financial Review", icon: Sparkles, href: "/review" },
         { name: "Invoicing & Payments", icon: CreditCard, href: "/invoicing" },
       ],
     },

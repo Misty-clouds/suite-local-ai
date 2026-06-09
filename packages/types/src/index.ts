@@ -261,3 +261,121 @@ export interface BudgetSummary {
   exceeded: number;
   needsAttention: number;
 }
+
+// ─── Bank Accounts / Transactions (Plaid) ─────────────────────────────────────
+
+export interface BankAccount {
+  id: string;
+  accountId: string;
+  name: string;
+  mask?: string;
+  type?: string;
+  subtype?: string;
+  currentBalance?: number;
+  availableBalance?: number;
+  isoCurrency?: string;
+  institutionName?: string;
+  updatedAt?: string;
+}
+
+export type TransactionDirection = "inflow" | "outflow";
+
+export interface Transaction {
+  id: string;
+  accountId: string;
+  txnId: string;
+  date: string;
+  name: string;
+  merchantName?: string;
+  amount: number;
+  direction: TransactionDirection;
+  category: string[];
+  aiCategory?: string;
+  pending: boolean;
+  isoCurrency?: string;
+  source: "plaid";
+  createdAt?: string;
+}
+
+// ─── Finance Agent: Reports / Recommendations / Tasks ─────────────────────────
+
+export type Severity = "info" | "warning" | "critical";
+
+export interface ReportAnomaly {
+  type: string;
+  detail: string;
+  severity: Severity;
+}
+
+export interface BudgetVarianceItem {
+  category: string;
+  budgeted: number;
+  actual: number;
+  variance: number;
+  variancePct: number;
+}
+
+export interface FinancialReport {
+  id: string;
+  period: { start: string; end: string };
+  revenue: number;
+  expenses: number;
+  net: number;
+  cashFlow: number;
+  taxEstimate: number;
+  budgetVariance: BudgetVarianceItem[];
+  anomalies: ReportAnomaly[];
+  summaryText: string;
+  kpis?: Record<string, number | string>;
+  status: "draft" | "complete";
+  agentRunId?: string;
+  createdAt?: string;
+}
+
+export interface Recommendation {
+  id: string;
+  reportId?: string;
+  title: string;
+  rationale: string;
+  impact?: string;
+  severity: Severity;
+  createdAt?: string;
+}
+
+export type ActionTaskStatus = "open" | "done" | "dismissed";
+
+export interface ActionTask {
+  id: string;
+  title: string;
+  detail?: string;
+  dueDate?: string;
+  status: ActionTaskStatus;
+  source: "agent" | "user";
+  reportId?: string;
+  createdAt?: string;
+}
+
+// ─── Agent runs (visible execution + memory) ──────────────────────────────────
+
+export type AgentRunStatus = "running" | "done" | "error";
+export type AgentStepStatus = "pending" | "running" | "done" | "error";
+
+export interface AgentStep {
+  key: string;
+  label: string;
+  status: AgentStepStatus;
+  detail?: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface AgentRun {
+  id: string;
+  type: "financial_review";
+  status: AgentRunStatus;
+  steps: AgentStep[];
+  reportId?: string;
+  model?: string;
+  error?: string;
+  createdAt?: string;
+}
