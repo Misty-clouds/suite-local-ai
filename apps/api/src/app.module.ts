@@ -17,6 +17,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { AgentModule } from './agent/agent.module';
 import { ToolsModule } from './tools/tools.module';
 import { PlaidModule } from './plaid/plaid.module';
+import { FivetranModule } from './fivetran/fivetran.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PlaidModule } from './plaid/plaid.module';
     AgentModule,
     ToolsModule,
     PlaidModule,
+    FivetranModule,
   ],
   controllers: [AppController],
   providers: [

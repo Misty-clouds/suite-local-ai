@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BudgetsService } from '../budgets/budgets.service';
+import { FivetranService } from '../fivetran/fivetran.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PlaidService } from '../plaid/plaid.service';
 import { ReportsService } from '../reports/reports.service';
@@ -42,6 +43,7 @@ export class ReviewOrchestratorService {
     private readonly plaid: PlaidService,
     private readonly budgets: BudgetsService,
     private readonly invoices: InvoicesService,
+    private readonly fivetran: FivetranService,
     private readonly reports: ReportsService,
     private readonly tasks: TasksService,
     private readonly runs: AgentRunsService,
@@ -122,13 +124,21 @@ export class ReviewOrchestratorService {
         },
       );
 
-      await runStep('sync_fivetran', 'Triggering Fivetran sync (MCP)', () => {
-        // TODO(agent): real Fivetran MCP `trigger_sync` call.
-        return 'Sync requested via Fivetran MCP';
-      });
+      await runStep(
+        'sync_fivetran',
+        'Triggering Fivetran sync (MCP)',
+        async () => {
+          if (!this.fivetran.configured)
+            return 'Fivetran not configured — skipped';
+          const { message } = await this.fivetran.triggerSync();
+          return message;
+        },
+      );
 
-      await runStep('verify_sync', 'Verifying data sync', () => {
-        return 'Connector status: synced';
+      await runStep('verify_sync', 'Verifying data sync', async () => {
+        if (!this.fivetran.configured) return 'skipped';
+        const s = await this.fivetran.getStatus();
+        return `Connector ${s.syncState ?? 'unknown'} (setup: ${s.setupState ?? 'n/a'})`;
       });
 
       let txns: Awaited<ReturnType<PlaidService['listTransactions']>> = [];

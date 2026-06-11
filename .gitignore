@@ -18,6 +18,8 @@ out
 .env.staging
 # Allow examples
 !.env.example
+# ...except the API env example (contains the full key list — keep it untracked)
+apps/api/.env.example
 
 # ─── Secrets / Credentials ────────────────────────────────────────────────────
 *firebase-adminsdk*.json

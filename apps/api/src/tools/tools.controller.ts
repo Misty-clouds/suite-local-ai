@@ -7,9 +7,11 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Query } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
 import { BudgetsService } from '../budgets/budgets.service';
 import { InvoicesService } from '../invoices/invoices.service';
+import { PlaidService } from '../plaid/plaid.service';
 import { ReportsService } from '../reports/reports.service';
 import { TasksService } from '../tasks/tasks.service';
 import { AgentServiceGuard } from './guards/agent-service.guard';
@@ -33,6 +35,7 @@ export class ToolsController {
   constructor(
     private readonly budgets: BudgetsService,
     private readonly invoices: InvoicesService,
+    private readonly plaid: PlaidService,
     private readonly reports: ReportsService,
     private readonly tasks: TasksService,
     private readonly tools: ToolsService,
@@ -41,6 +44,19 @@ export class ToolsController {
   private requireOwner(owner?: string): string {
     if (!owner) throw new BadRequestException('Missing x-owner-id header');
     return owner;
+  }
+
+  @Get('accounts')
+  accounts(@Headers('x-owner-id') owner?: string) {
+    return this.plaid.listAccounts(this.requireOwner(owner));
+  }
+
+  @Get('transactions')
+  transactions(
+    @Headers('x-owner-id') owner?: string,
+    @Query('since') since?: string,
+  ) {
+    return this.plaid.listTransactions(this.requireOwner(owner), since, 500);
   }
 
   @Get('budget-summary')

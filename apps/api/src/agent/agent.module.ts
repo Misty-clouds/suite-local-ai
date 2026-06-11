@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BudgetsModule } from '../budgets/budgets.module';
+import { FivetranModule } from '../fivetran/fivetran.module';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { PlaidModule } from '../plaid/plaid.module';
 import { ReportsModule } from '../reports/reports.module';
@@ -19,6 +20,7 @@ import { AgentController } from './agent.controller';
     PlaidModule,
     BudgetsModule,
     InvoicesModule,
+    FivetranModule,
     ReportsModule,
     TasksModule,
   ],
