@@ -27,6 +27,11 @@ export const agentApi = {
     return res.data.runId;
   },
 
+  async chat(message: string): Promise<string> {
+    const res = await api.post<{ reply: string }>("/agent/chat", { message });
+    return res.data.reply;
+  },
+
   /**
    * Streams run snapshots over SSE. Uses fetch (not EventSource) so the JWT
    * Authorization header can be sent. Resolves when the stream closes.

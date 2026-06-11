@@ -28,6 +28,13 @@ export class UsersService {
     return this.userModel.findOne({ email: email.toLowerCase() }).exec();
   }
 
+  updateProfile(
+    id: string,
+    patch: { name?: string; avatarUrl?: string },
+  ): Promise<UserDocument | null> {
+    return this.userModel.findByIdAndUpdate(id, patch, { new: true }).exec();
+  }
+
   /** Includes the normally-hidden `password` field for credential checks. */
   findByEmailWithPassword(email: string): Promise<UserDocument | null> {
     return this.userModel

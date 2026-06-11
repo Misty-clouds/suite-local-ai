@@ -21,6 +21,7 @@ import {
 import Header from "../../../components/Header";
 import FileUploadModal from "../../../components/FileUploadModal";
 import Pagination from "../../../components/Pagination";
+import { documentsApi, type DocumentItem } from "@/lib/documents-api";
 
 export default function DocumentsPage() {
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
@@ -28,7 +29,45 @@ export default function DocumentsPage() {
   const [openActionIndex, setOpenActionIndex] = useState<number | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 10;
+  const totalPages = 1;
+
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
+  const [stats, setStats] = useState({ total: 0, external: 0, recent: 0 });
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    Promise.all([documentsApi.list(), documentsApi.stats()])
+      .then(([d, s]) => {
+        setDocs(d);
+        setStats(s);
+      })
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function openDocument(doc: DocumentItem) {
+    setOpenActionIndex(null);
+    try {
+      const content = await documentsApi.content(doc.id);
+      if (content) window.open(content, "_blank");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function deleteDocument(doc: DocumentItem) {
+    setOpenActionIndex(null);
+    try {
+      await documentsApi.remove(doc.id);
+      load();
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
@@ -46,36 +85,46 @@ export default function DocumentsPage() {
   const cards = [
     {
       title: "Total documents",
-      value: "49",
-      subtext: "Total invoiced for this project",
+      value: String(stats.total),
+      subtext: "All uploaded files",
       icon: FileText,
     },
     {
       title: "Shared externally",
-      value: "49",
-      subtext: "Payment received",
+      value: String(stats.external),
+      subtext: "From a URL",
       icon: File,
     },
     {
       title: "Linked to projects",
-      value: "49",
-      subtext: "Unpaid invoices",
+      value: String(stats.total),
+      subtext: "Available in workspace",
       icon: Link2,
     },
     {
       title: "Recent uploads",
-      value: "90",
+      value: String(stats.recent),
       subtext: "This week",
       icon: FileClock,
     },
   ];
 
-  const documents = Array(8).fill({
-    name: "Neotech Solutions",
-    project: "Netech Solutions full design",
-    type: "PDF",
-    date: "Feb 27, 2025",
-  });
+  const documents = docs.map((d) => ({
+    id: d.id,
+    name: d.name,
+    project: d.sourceUrl ? "External link" : "—",
+    type: (d.type?.split("/")[1] || d.name.split(".").pop() || "FILE")
+      .slice(0, 4)
+      .toUpperCase(),
+    date: d.createdAt
+      ? new Date(d.createdAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "—",
+    raw: d,
+  }));
 
   function handleRowAction(
     action: "view" | "download" | "link" | "rename" | "delete",
@@ -85,19 +134,14 @@ export default function DocumentsPage() {
 
     switch (action) {
       case "view":
-        console.log("View document", doc);
-        return;
       case "download":
-        console.log("Download document", doc);
-        return;
-      case "link":
-        console.log("Link document to project", doc);
-        return;
-      case "rename":
-        console.log("Rename document", doc);
+        void openDocument(doc.raw);
         return;
       case "delete":
-        console.log("Delete document", doc);
+        void deleteDocument(doc.raw);
+        return;
+      case "link":
+      case "rename":
         return;
     }
   }
@@ -218,7 +262,23 @@ export default function DocumentsPage() {
 
           {/* Table Body */}
           <div className="flex flex-col">
-            {documents.map((doc, index) => (
+            {loading ? (
+              <div className="py-16 text-center text-sm text-zinc-600">
+                Loading documents…
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <FileText size={28} className="text-zinc-600" />
+                <p className="text-sm text-zinc-400">No documents yet</p>
+                <button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="rounded-lg bg-[#045DDF] px-4 py-2 text-sm font-medium text-white hover:bg-[#034BBB]"
+                >
+                  Upload a file
+                </button>
+              </div>
+            ) : (
+              documents.map((doc, index) => (
               <div
                 key={index}
                 className="group flex items-center px-2 py-3 border-b border-[#272727] transition-colors hover:bg-white/5"
@@ -313,7 +373,8 @@ export default function DocumentsPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
 
           {/* Pagination */}
@@ -328,6 +389,7 @@ export default function DocumentsPage() {
       <FileUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        onUploaded={load}
       />
     </>
   );

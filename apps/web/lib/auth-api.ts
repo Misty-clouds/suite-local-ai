@@ -45,6 +45,14 @@ export const authApi = {
     return res.data;
   },
 
+  async updateProfile(patch: {
+    name?: string;
+    avatarUrl?: string;
+  }): Promise<User> {
+    const res = await api.patch<User>("/auth/me", patch);
+    return res.data;
+  },
+
   async logout(): Promise<void> {
     await api.post("/auth/logout", {});
   },

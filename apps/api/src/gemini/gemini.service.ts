@@ -50,6 +50,26 @@ export class GeminiService {
     return this.model;
   }
 
+  /** Free-form finance assistant chat reply. */
+  async chat(message: string, context?: string): Promise<string> {
+    const vertex = new VertexAI({
+      project: this.config.get<string>('GOOGLE_CLOUD_PROJECT') ?? '',
+      location: this.config.get<string>('VERTEX_LOCATION') ?? 'us-central1',
+    });
+    const model = vertex.getGenerativeModel({
+      model: this.config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash',
+      generationConfig: { temperature: 0.6 },
+      systemInstruction:
+        'You are Suite AI, a concise, friendly finance operations assistant for a small business. Answer in 1-4 short sentences. Be practical and specific.',
+    });
+    const prompt = context ? `${context}\n\nQuestion: ${message}` : message;
+    const result = await model.generateContent(prompt);
+    return (
+      result.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ??
+      "Sorry, I couldn't generate a response."
+    );
+  }
+
   async insights(ctx: ReviewContext): Promise<GeminiInsights> {
     const prompt = `You are a finance operations analyst for a small business.
 Given this month's figures, write a 1-2 sentence executive summary and 2-3

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { randomUUID } from 'crypto';
 import { Model, Types } from 'mongoose';
 import {
   Configuration,
@@ -198,6 +199,33 @@ export class PlaidService {
       );
     }
     return { synced: total };
+  }
+
+  /** Manually-entered transaction (from the Add Transaction form). */
+  createManualTransaction(
+    owner: string,
+    input: {
+      type: 'Income' | 'Expenses';
+      description: string;
+      amount: number;
+      category?: string;
+      method?: string;
+      date?: string;
+    },
+  ): Promise<TransactionDocument> {
+    return this.txnModel.create({
+      owner: new Types.ObjectId(owner),
+      accountId: 'manual',
+      txnId: `manual_${randomUUID()}`,
+      date: input.date ? new Date(input.date) : new Date(),
+      name: input.description,
+      amount: Math.abs(input.amount),
+      direction: input.type === 'Income' ? 'inflow' : 'outflow',
+      category: input.category ? [input.category] : [],
+      aiCategory: input.category,
+      pending: false,
+      source: 'manual',
+    });
   }
 
   listAccounts(owner: string): Promise<BankAccountDocument[]> {

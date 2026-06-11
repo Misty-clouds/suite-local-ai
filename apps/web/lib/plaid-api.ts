@@ -34,4 +34,16 @@ export const plaidApi = {
     const res = await api.get<Transaction[]>(`/transactions${qs}`);
     return res.data;
   },
+
+  async createTransaction(input: {
+    type: "Income" | "Expenses";
+    description: string;
+    amount: number;
+    category?: string;
+    method?: string;
+    date?: string;
+  }): Promise<Transaction> {
+    const res = await api.post<Transaction>("/transactions", input);
+    return res.data;
+  },
 };

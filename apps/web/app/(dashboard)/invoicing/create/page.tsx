@@ -562,9 +562,16 @@ export default function CreateInvoicePage() {
                 <div className="rounded-2xl border border-[#222222] bg-[#222222] p-5">
                   <div className="flex justify-between items-start gap-8">
                     <div>
-                      <h2 className="text-[26px] font-semibold mb-8 text-white">
-                        Invoice
-                      </h2>
+                      <div className="mb-8">
+                        <h2 className="text-[26px] font-semibold text-white">
+                          Invoice
+                        </h2>
+                        {projectName.trim() && (
+                          <div className="mt-1 text-[13px] text-zinc-400">
+                            {projectName}
+                          </div>
+                        )}
+                      </div>
                       <div className="text-[12px] text-zinc-500 mb-1">
                         Billed To:
                       </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Calendar, ChevronDown, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Calendar, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,7 +15,9 @@ import {
 } from "recharts";
 import { ChartTooltip } from "./ChartTooltip";
 import { GaugeChart } from "./GaugeChart";
+import { OverviewEmptyState } from "./OverviewEmptyState";
 import { StatsCard } from "@/components/StatsCard";
+import { plaidApi } from "@/lib/plaid-api";
 import {
   revenueExpensesData,
   profitTrendData,
@@ -22,7 +25,46 @@ import {
   statsCards,
 } from "@/lib/chartData";
 
-export function OverviewCharts() {
+export function OverviewCharts({
+  onConnectBank,
+  onAddTransaction,
+}: {
+  onConnectBank?: () => void;
+  onAddTransaction?: () => void;
+} = {}) {
+  const [hasData, setHasData] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([plaidApi.listTransactions(), plaidApi.listAccounts()])
+      .then(([txns, accounts]) => {
+        if (active) setHasData(txns.length > 0 || accounts.length > 0);
+      })
+      .catch(() => {
+        if (active) setHasData(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (hasData === null) {
+    return (
+      <div className="flex items-center justify-center py-24 text-zinc-600">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <OverviewEmptyState
+        onConnectBank={onConnectBank}
+        onAddTransaction={onAddTransaction}
+      />
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Stats Cards Row */}

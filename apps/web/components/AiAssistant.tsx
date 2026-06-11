@@ -3,18 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Sparkles, X, ArrowUp, Bot } from "lucide-react";
+import { useAuth } from "./auth/AuthProvider";
+import { agentApi } from "@/lib/agent-api";
 
 interface Message {
   id: number;
   role: "assistant" | "user";
   text: string;
 }
-
-const GREETING: Message = {
-  id: 0,
-  role: "assistant",
-  text: "Hi Taoheed 👋 I'm Suite AI. Ask me about your revenue, invoices, budgets, or taxes — or pick a suggestion below.",
-};
 
 const SUGGESTIONS = [
   "Summarise this month's cash flow",
@@ -23,9 +19,18 @@ const SUGGESTIONS = [
 ];
 
 export default function AiAssistant() {
+  const { user } = useAuth();
+  const firstName = user?.name?.trim().split(/\s+/)[0] || "there";
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([GREETING]);
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      id: 0,
+      role: "assistant",
+      text: `Hi ${firstName} 👋 I'm Suite AI. Ask me about your revenue, invoices, budgets, or taxes — or pick a suggestion below.`,
+    },
+  ]);
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
 
@@ -41,18 +46,35 @@ export default function AiAssistant() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open]);
 
-  function send(text: string) {
+  async function send(text: string) {
     const trimmed = text.trim();
-    if (!trimmed) return;
-    const userMsg: Message = { id: nextId.current++, role: "user", text: trimmed };
-    // TODO: call the AI backend; for now reply with a themed placeholder.
-    const reply: Message = {
+    if (!trimmed || sending) return;
+    const userMsg: Message = {
       id: nextId.current++,
-      role: "assistant",
-      text: "I'm still being wired up to your live financials — soon I'll answer that from your real numbers.",
+      role: "user",
+      text: trimmed,
     };
-    setMessages((m) => [...m, userMsg, reply]);
+    setMessages((m) => [...m, userMsg]);
     setInput("");
+    setSending(true);
+    try {
+      const reply = await agentApi.chat(trimmed);
+      setMessages((m) => [
+        ...m,
+        { id: nextId.current++, role: "assistant", text: reply },
+      ]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        {
+          id: nextId.current++,
+          role: "assistant",
+          text: "Sorry, I couldn't reach Suite AI right now. Please try again.",
+        },
+      ]);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -102,6 +124,18 @@ export default function AiAssistant() {
                   </div>
                 </div>
               ))}
+
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl rounded-bl-sm bg-app-card px-3.5 py-3">
+                    <span className="flex gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-app-text-muted [animation-delay:-0.3s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-app-text-muted [animation-delay:-0.15s]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-app-text-muted" />
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Suggestions (only before the first user message) */}
               {messages.length === 1 && (

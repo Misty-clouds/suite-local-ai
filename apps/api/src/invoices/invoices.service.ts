@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { ClientsService } from '../clients/clients.service';
+import { MailService } from '../mail/mail.service';
 import { CreateInvoiceDto, LineItemDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -16,10 +18,13 @@ const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     @InjectModel(Invoice.name)
     private readonly invoiceModel: Model<InvoiceDocument>,
     private readonly clientsService: ClientsService,
+    private readonly mailService: MailService,
   ) {}
 
   // ─── Totals ─────────────────────────────────────────────────────────────────
@@ -179,7 +184,24 @@ export class InvoicesService {
     }
     invoice.status = 'sent';
     if (!invoice.issueDate) invoice.issueDate = new Date();
-    return invoice.save();
+    const saved = await invoice.save();
+
+    // Email the invoice via Resend (best effort — don't fail the send).
+    if (saved.client?.email) {
+      try {
+        await this.mailService.sendInvoiceEmail(saved.client.email, {
+          invoiceNumber: saved.invoiceNumber,
+          clientName: saved.client.name,
+          total: saved.total,
+          dueDate: saved.dueDate,
+        });
+      } catch (e) {
+        this.logger.warn(
+          `Invoice email failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+    return saved;
   }
 
   async cancel(owner: string, id: string): Promise<InvoiceDocument> {

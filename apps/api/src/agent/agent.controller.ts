@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -12,9 +13,12 @@ import { concat, from, Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SkipTransform } from '../common/decorators/skip-transform.decorator';
+import { GeminiService } from '../gemini/gemini.service';
+import { ReportsService } from '../reports/reports.service';
 import { AgentRunsService } from './agent-runs.service';
 import { AgentEventsService, RunSnapshot } from './agent-events.service';
 import { ReviewOrchestratorService } from './review-orchestrator.service';
+import { ChatDto } from './dto/chat.dto';
 
 @Controller('agent')
 export class AgentController {
@@ -22,6 +26,8 @@ export class AgentController {
     private readonly runs: AgentRunsService,
     private readonly events: AgentEventsService,
     private readonly orchestrator: ReviewOrchestratorService,
+    private readonly gemini: GeminiService,
+    private readonly reports: ReportsService,
   ) {}
 
   @Post('financial-review')
@@ -29,6 +35,26 @@ export class AgentController {
   async startReview(@CurrentUser('userId') userId: string) {
     const runId = await this.orchestrator.start(userId);
     return { runId };
+  }
+
+  @Post('chat')
+  @HttpCode(HttpStatus.OK)
+  async chat(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: ChatDto,
+  ): Promise<{ reply: string }> {
+    if (!this.gemini.configured) {
+      return {
+        reply:
+          'AI is not configured yet. Add GOOGLE_CLOUD_PROJECT to enable Suite AI.',
+      };
+    }
+    const report = await this.reports.latest(userId);
+    const context = report
+      ? `The user's latest financial review: revenue $${report.revenue}, expenses $${report.expenses}, net $${report.net}, cash flow $${report.cashFlow}.`
+      : undefined;
+    const reply = await this.gemini.chat(dto.message, context);
+    return { reply };
   }
 
   @Get('runs/:id')

@@ -4,9 +4,22 @@ import { useState } from "react";
 import { Bell, Plus } from "lucide-react";
 import { MobileSidebarTrigger } from "./Sidebar";
 import NotificationsDrawer from "./NotificationsDrawer";
+import { useAuth } from "./auth/AuthProvider";
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 const Header = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const { user } = useAuth();
+  const firstName =
+    user?.name?.trim().split(/\s+/)[0] ||
+    user?.email?.split("@")[0] ||
+    "there";
 
   return (
     <>
@@ -18,7 +31,9 @@ const Header = () => {
         <div className="flex items-center gap-3">
           <MobileSidebarTrigger />
           <div className="hidden md:block">
-            <h2 className="text-xl font-semibold">Good morning, Taoheed 👋</h2>
+            <h2 className="text-xl font-semibold">
+              {greeting()}, {firstName} 👋
+            </h2>
             <p className="text-xs text-zinc-500">
               Run your entire business from one intelligent workspace
             </p>

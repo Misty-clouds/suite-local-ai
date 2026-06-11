@@ -11,6 +11,9 @@ export interface ClientConfig {
   baseUrl?: string;
   getToken?: () => string | null | undefined;
   onUnauthorized?: () => void;
+  /** Attempt to refresh the session on 401. Return true if the request
+   *  should be retried (a fresh token is now available). */
+  onRefresh?: () => Promise<boolean>;
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
@@ -18,7 +21,8 @@ export interface ClientConfig {
 async function request<T>(
   path: string,
   options: RequestInit,
-  config: ClientConfig
+  config: ClientConfig,
+  allowRetry = true
 ): Promise<T> {
   const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
   const token = config.getToken?.();
@@ -32,6 +36,13 @@ async function request<T>(
   const res = await fetch(`${baseUrl}${path}`, { ...options, headers });
 
   if (res.status === 401) {
+    // Try a one-time token refresh, then replay the request.
+    if (allowRetry && config.onRefresh) {
+      const refreshed = await config.onRefresh();
+      if (refreshed) {
+        return request<T>(path, options, config, false);
+      }
+    }
     config.onUnauthorized?.();
     throw new Error("Unauthorized");
   }

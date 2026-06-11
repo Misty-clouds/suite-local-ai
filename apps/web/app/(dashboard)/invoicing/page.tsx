@@ -13,6 +13,7 @@ import {
   Eye,
   Download,
   CheckCircle2,
+  CreditCard,
   Check,
   Loader2,
   FileText,
@@ -20,6 +21,7 @@ import {
 import type { Invoice, InvoiceDisplayStatus } from "@suite/types";
 import Header from "../../../components/Header";
 import Pagination from "../../../components/Pagination";
+import RecordPaymentModal from "../../../components/RecordPaymentModal";
 import { invoicesApi } from "@/lib/invoices-api";
 
 const PAGE_SIZE = 10;
@@ -78,12 +80,14 @@ function InvoiceRow({
   isSelected,
   onSelectChange,
   onMarkPaid,
+  onRecordPayment,
   onDelete,
 }: {
   invoice: Invoice;
   isSelected: boolean;
   onSelectChange: (next: boolean) => void;
   onMarkPaid: (id: string) => void;
+  onRecordPayment: (invoice: Invoice) => void;
   onDelete: (id: string) => void;
 }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -184,6 +188,18 @@ function InvoiceRow({
                   Mark as paid
                 </button>
               )}
+              {invoice.status !== "paid" && invoice.status !== "cancelled" && (
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    onRecordPayment(invoice);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-zinc-300 hover:bg-[#272727] hover:text-white transition-colors"
+                >
+                  <CreditCard size={14} className="text-zinc-400" />
+                  Record payment
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -210,6 +226,7 @@ export default function InvoicingPage() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -365,6 +382,7 @@ export default function InvoicingPage() {
                     })
                   }
                   onMarkPaid={handleMarkPaid}
+                  onRecordPayment={setPaymentInvoice}
                   onDelete={handleDelete}
                 />
               ))}
@@ -402,6 +420,14 @@ export default function InvoicingPage() {
           )}
         </div>
       </div>
+
+      {paymentInvoice && (
+        <RecordPaymentModal
+          invoice={paymentInvoice}
+          onClose={() => setPaymentInvoice(null)}
+          onRecorded={load}
+        />
+      )}
     </div>
   );
 }

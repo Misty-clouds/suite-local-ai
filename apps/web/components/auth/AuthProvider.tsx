@@ -25,6 +25,10 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (patch: {
+    name?: string;
+    avatarUrl?: string;
+  }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -108,9 +112,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const updateProfile = useCallback(
+    async (patch: { name?: string; avatarUrl?: string }) => {
+      const updated = await authApi.updateProfile(patch);
+      setUser(updated);
+    },
+    [],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout],
+    () => ({ user, status, login, register, logout, updateProfile }),
+    [user, status, login, register, logout, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

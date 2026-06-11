@@ -11,6 +11,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { PlaidService } from './plaid.service';
 import { ExchangePublicTokenDto } from './dto/exchange.dto';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
 
 @Controller('plaid')
 export class PlaidController {
@@ -51,7 +52,7 @@ export class PlaidController {
   }
 }
 
-/** Root-level read endpoints consumed by the dashboard. */
+/** Root-level account/transaction endpoints consumed by the dashboard. */
 @Controller()
 export class AccountsController {
   constructor(private readonly plaid: PlaidService) {}
@@ -67,5 +68,14 @@ export class AccountsController {
     @Query('since') since?: string,
   ) {
     return this.plaid.listTransactions(userId, since);
+  }
+
+  @Post('transactions')
+  @HttpCode(HttpStatus.CREATED)
+  createTransaction(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateTransactionDto,
+  ) {
+    return this.plaid.createManualTransaction(userId, dto);
   }
 }

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -14,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 
 @Controller('auth')
@@ -74,5 +76,13 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser('userId') userId: string) {
     return this.authService.getProfile(userId);
+  }
+
+  @Patch('me')
+  updateProfile(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(userId, dto);
   }
 }

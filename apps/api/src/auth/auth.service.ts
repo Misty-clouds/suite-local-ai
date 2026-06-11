@@ -104,6 +104,17 @@ export class AuthService {
     return user.toJSON();
   }
 
+  async updateProfile(
+    userId: string,
+    patch: { name?: string; avatarUrl?: string },
+  ): Promise<Record<string, unknown>> {
+    const user = await this.usersService.updateProfile(userId, patch);
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+    return user.toJSON();
+  }
+
   // ─── Password reset (OTP) ─────────────────────────────────────────────────────
 
   /** Emails a 6-digit reset code. Always succeeds so it can't reveal whether an

@@ -24,6 +24,7 @@ const TABS: { key: FinancialsTab; label: string; icon: React.ReactNode }[] = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState<FinancialsTab>("analytics");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [txRefresh, setTxRefresh] = useState(0);
 
   return (
     <>
@@ -51,10 +52,16 @@ export default function Home() {
         <div className="flex w-full max-w-full flex-col lg:flex-row">
           {/* Main financials column */}
           <div className="min-w-0 flex-1">
-            {activeTab === "analytics" && <OverviewCharts />}
+            {activeTab === "analytics" && (
+              <OverviewCharts
+                onConnectBank={() => setActiveTab("accounts")}
+                onAddTransaction={() => setIsAddModalOpen(true)}
+              />
+            )}
 
             {activeTab === "transactions" && (
               <TransactionsTab
+                key={txRefresh}
                 onNewTransaction={() => setIsAddModalOpen(true)}
               />
             )}
@@ -78,6 +85,7 @@ export default function Home() {
       <AddTransactionModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        onCreated={() => setTxRefresh((n) => n + 1)}
       />
     </>
   );
