@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { BigQueryModule } from '../bigquery/bigquery.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { FivetranModule } from '../fivetran/fivetran.module';
+import { GeminiModule } from '../gemini/gemini.module';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { PlaidModule } from '../plaid/plaid.module';
 import { ReportsModule } from '../reports/reports.module';
@@ -21,6 +23,8 @@ import { AgentController } from './agent.controller';
     BudgetsModule,
     InvoicesModule,
     FivetranModule,
+    BigQueryModule,
+    GeminiModule,
     ReportsModule,
     TasksModule,
   ],

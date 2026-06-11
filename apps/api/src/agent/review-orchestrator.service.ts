@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { BigQueryService } from '../bigquery/bigquery.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { FivetranService } from '../fivetran/fivetran.service';
+import { GeminiService } from '../gemini/gemini.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PlaidService } from '../plaid/plaid.service';
 import { ReportsService } from '../reports/reports.service';
@@ -12,6 +14,15 @@ import { AgentRunDocument, AgentStepData } from './schemas/agent-run.schema';
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const STEP_DELAY_MS = 250; // makes the live execution visible in the UI
+
+interface ReviewTxn {
+  name: string;
+  amount: number;
+  direction: 'inflow' | 'outflow';
+  aiCategory?: string;
+  category: string[];
+  date: string | Date;
+}
 
 const REVIEW_STEPS: { key: string; label: string }[] = [
   { key: 'check_accounts', label: 'Checking connected accounts' },
@@ -44,6 +55,8 @@ export class ReviewOrchestratorService {
     private readonly budgets: BudgetsService,
     private readonly invoices: InvoicesService,
     private readonly fivetran: FivetranService,
+    private readonly bigquery: BigQueryService,
+    private readonly gemini: GeminiService,
     private readonly reports: ReportsService,
     private readonly tasks: TasksService,
     private readonly runs: AgentRunsService,
@@ -141,11 +154,34 @@ export class ReviewOrchestratorService {
         return `Connector ${s.syncState ?? 'unknown'} (setup: ${s.setupState ?? 'n/a'})`;
       });
 
-      let txns: Awaited<ReturnType<PlaidService['listTransactions']>> = [];
+      let txns: ReviewTxn[] = [];
       await runStep('retrieve', 'Retrieving latest transactions', async () => {
-        txns = await this.plaid.listTransactions(owner, undefined, 500);
+        // Prefer the Fivetran-synced warehouse; fall back to Mongo.
+        if (this.bigquery.configured) {
+          try {
+            const fromBq = await this.bigquery.listTransactions(owner, 500);
+            if (fromBq.length) {
+              txns = fromBq;
+              txnCount = txns.length;
+              return `${txnCount} transactions from BigQuery (Fivetran)`;
+            }
+          } catch (e) {
+            this.logger.warn(
+              `BigQuery read failed, using Mongo: ${e instanceof Error ? e.message : String(e)}`,
+            );
+          }
+        }
+        const mongo = await this.plaid.listTransactions(owner, undefined, 500);
+        txns = mongo.map((t) => ({
+          name: t.name,
+          amount: t.amount,
+          direction: t.direction,
+          aiCategory: t.aiCategory,
+          category: t.category,
+          date: t.date,
+        }));
         txnCount = txns.length;
-        return `${txnCount} transactions retrieved`;
+        return `${txnCount} transactions (MongoDB)`;
       });
 
       await runStep('categorize', 'Categorizing transactions', () => {
@@ -236,8 +272,67 @@ export class ReviewOrchestratorService {
           : 'No anomalies detected';
       });
 
-      // Persist the report first so recs/tasks can link to it.
       const period = this.periodFor(txns);
+      const topCategories = [...categoryTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([category, amount]) => ({ category, amount }));
+
+      // Gemini turns the numbers into a summary + recommendations.
+      let summaryText = '';
+      let recs: {
+        title: string;
+        rationale: string;
+        severity: 'info' | 'warning' | 'critical';
+      }[] = [];
+      await runStep(
+        'recommend',
+        'Generating insights & recommendations (Gemini)',
+        async () => {
+          if (this.gemini.configured) {
+            try {
+              const insights = await this.gemini.insights({
+                revenue,
+                expenses,
+                cashFlow,
+                taxEstimate,
+                topCategories,
+                anomalies,
+              });
+              summaryText =
+                insights.summaryText ||
+                this.buildSummary(
+                  revenue,
+                  expenses,
+                  cashFlow,
+                  anomalies.length,
+                );
+              recs = insights.recommendations.length
+                ? insights.recommendations
+                : this.buildRecommendations(
+                    categoryTotals,
+                    expenses,
+                    anomalies,
+                  );
+              return `Gemini generated ${recs.length} recommendations`;
+            } catch (e) {
+              this.logger.warn(
+                `Gemini failed, using heuristics: ${e instanceof Error ? e.message : String(e)}`,
+              );
+            }
+          }
+          summaryText = this.buildSummary(
+            revenue,
+            expenses,
+            cashFlow,
+            anomalies.length,
+          );
+          recs = this.buildRecommendations(categoryTotals, expenses, anomalies);
+          return `${recs.length} recommendations`;
+        },
+      );
+
+      // Persist the report (with the Gemini summary) so recs/tasks can link.
       const report = await this.reports.createReport(owner, {
         period,
         revenue,
@@ -247,32 +342,16 @@ export class ReviewOrchestratorService {
         taxEstimate,
         budgetVariance,
         anomalies,
-        summaryText: this.buildSummary(
-          revenue,
-          expenses,
-          cashFlow,
-          anomalies.length,
-        ),
+        summaryText,
         kpis: { accounts: accountCount, transactions: txnCount },
         status: 'complete',
         agentRunId: runId,
       });
       const reportId = report.id as string;
 
-      const recs = this.buildRecommendations(
-        categoryTotals,
-        expenses,
-        anomalies,
-      );
-      await runStep('recommend', 'Generating recommendations', async () => {
-        for (const r of recs) {
-          await this.reports.createRecommendation(owner, { ...r, reportId });
-        }
-        return `${recs.length} recommendations`;
-      });
-
       await runStep('tasks', 'Creating action items', async () => {
         for (const r of recs) {
+          await this.reports.createRecommendation(owner, { ...r, reportId });
           await this.tasks.create(owner, {
             title: r.title,
             detail: r.rationale,
@@ -280,7 +359,7 @@ export class ReviewOrchestratorService {
             source: 'agent',
           });
         }
-        return `${recs.length} tasks created`;
+        return `${recs.length} recommendations + tasks`;
       });
 
       await runStep('save', 'Saving report', () => 'Report saved');
