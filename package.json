@@ -10,6 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "build:api": "pnpm --filter @suite/api build",
+    "start": "node apps/api/dist/main.js",
     "start:api": "node apps/api/dist/main.js",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

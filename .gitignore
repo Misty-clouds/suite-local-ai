@@ -53,3 +53,8 @@ apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
 
 # kiro
+
+# GCP service-account keys — never commit
+key.json
+gcp-key.json
+*-sa-key.json
