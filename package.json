@@ -12,6 +12,7 @@
     "build:api": "pnpm --filter @suite/api build",
     "start": "node apps/api/dist/main.js",
     "start:api": "node apps/api/dist/main.js",
+    "postinstall": "node scripts/postinstall-build.mjs",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
