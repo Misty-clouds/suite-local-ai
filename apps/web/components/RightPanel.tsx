@@ -155,7 +155,7 @@ export default function RightPanel() {
       </div>
 
       {/* Activities */}
-      <div className="rounded-lg border border-[#272727] bg-[#222222] shadow-lg flex-1">
+      <div className="flex flex-1 flex-col min-h-[380px] rounded-lg border border-[#272727] bg-[#222222] shadow-lg">
         <div className="p-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#6E7B82]">
             <Clock size={20} color="#6E7B82" />
@@ -163,7 +163,7 @@ export default function RightPanel() {
           </div>
         </div>
 
-        <div className="space-y-6 relative p-3 h-full">
+        <div className="space-y-6 relative flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-track-[#161616] scrollbar-thumb-[#333]">
           {activities.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-[46px] w-[46px] items-center justify-center rounded-xl bg-[#1C1C1C] border border-[#2A2A2A] text-zinc-400">
