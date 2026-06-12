@@ -325,4 +325,30 @@ export class InvoicesService {
       overdueCount,
     };
   }
+
+  /** Invoices past their due date with an outstanding balance. */
+  async overdueInvoices(owner: string) {
+    const now = Date.now();
+    const invoices = await this.invoiceModel
+      .find({ owner: new Types.ObjectId(owner) })
+      .exec();
+    return invoices
+      .filter((inv) => {
+        const due = round2(inv.total - inv.amountPaid);
+        return (
+          due > 0 &&
+          inv.dueDate &&
+          inv.dueDate.getTime() < now &&
+          inv.status !== 'paid' &&
+          inv.status !== 'cancelled' &&
+          inv.status !== 'draft'
+        );
+      })
+      .map((inv) => ({
+        invoiceNumber: inv.invoiceNumber,
+        client: inv.client?.name ?? 'Unknown',
+        amountDue: round2(inv.total - inv.amountPaid),
+        dueDate: inv.dueDate,
+      }));
+  }
 }

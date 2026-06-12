@@ -15,6 +15,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SkipTransform } from '../common/decorators/skip-transform.decorator';
 import { GeminiService } from '../gemini/gemini.service';
 import { ReportsService } from '../reports/reports.service';
+import { InvoicesService } from '../invoices/invoices.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import { AgentRunsService } from './agent-runs.service';
 import { AgentEventsService, RunSnapshot } from './agent-events.service';
 import { ReviewOrchestratorService } from './review-orchestrator.service';
@@ -28,6 +30,8 @@ export class AgentController {
     private readonly orchestrator: ReviewOrchestratorService,
     private readonly gemini: GeminiService,
     private readonly reports: ReportsService,
+    private readonly invoices: InvoicesService,
+    private readonly budgets: BudgetsService,
   ) {}
 
   @Post('financial-review')
@@ -49,11 +53,37 @@ export class AgentController {
           'AI is not configured yet. Add GOOGLE_CLOUD_PROJECT to enable Suite AI.',
       };
     }
-    const report = await this.reports.latest(userId);
-    const context = report
-      ? `The user's latest financial review: revenue $${report.revenue}, expenses $${report.expenses}, net $${report.net}, cash flow $${report.cashFlow}.`
-      : undefined;
-    const reply = await this.gemini.chat(dto.message, context);
+    const [report, invSummary, overdue, budgetSummary] = await Promise.all([
+      this.reports.latest(userId),
+      this.invoices.summary(userId),
+      this.invoices.overdueInvoices(userId),
+      this.budgets.summary(userId),
+    ]);
+
+    const lines: string[] = ["The user's live financial data:"];
+    if (report) {
+      lines.push(
+        `- Latest review: revenue $${report.revenue}, expenses $${report.expenses}, net $${report.net}, cash flow $${report.cashFlow}.`,
+      );
+    }
+    lines.push(
+      `- Invoices: ${invSummary.count} total, $${invSummary.totalBilled} billed, $${invSummary.totalPaid} paid, $${invSummary.outstanding} outstanding, ${invSummary.overdueCount} overdue ($${invSummary.overdueAmount}).`,
+    );
+    if (overdue.length > 0) {
+      const list = overdue
+        .slice(0, 10)
+        .map(
+          (o) =>
+            `${o.invoiceNumber} — ${o.client}, $${o.amountDue} due ${o.dueDate ? new Date(o.dueDate).toISOString().slice(0, 10) : 'n/a'}`,
+        )
+        .join('; ');
+      lines.push(`- Overdue invoices: ${list}.`);
+    }
+    lines.push(
+      `- Budgets: $${budgetSummary.totalAllocated} allocated, $${budgetSummary.totalSpent} spent, $${budgetSummary.remaining} remaining, ${budgetSummary.exceeded} exceeded, ${budgetSummary.needsAttention} need attention.`,
+    );
+
+    const reply = await this.gemini.chat(dto.message, lines.join('\n'));
     return { reply };
   }
 

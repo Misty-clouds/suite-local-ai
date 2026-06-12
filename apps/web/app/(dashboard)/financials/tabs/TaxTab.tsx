@@ -65,6 +65,7 @@ export function TaxTab() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
 
   // Prefill from any previously-saved tax profile.
   useEffect(() => {
@@ -78,11 +79,65 @@ export function TaxTab() {
       });
   }, []);
 
+  // Required fields per step (some are only required conditionally).
+  const REQUIRED: Record<
+    TaxStep,
+    { key: string; label: string; when?: (d: TaxFormData) => boolean }[]
+  > = {
+    1: [
+      { key: "businessName", label: "Business name" },
+      { key: "stateOfOperation", label: "State of operation" },
+      { key: "industry", label: "Industry" },
+    ],
+    2: [
+      { key: "tin", label: "Tax Identification Number (TIN)" },
+      {
+        key: "vatNumber",
+        label: "VAT registration number",
+        when: (d) => d.isVatRegistered === "Yes",
+      },
+    ],
+    3: [{ key: "fiscalYearStart", label: "Fiscal year start" }],
+    4: [
+      {
+        key: "numEmployees",
+        label: "Number of employees",
+        when: (d) => d.hasEmployees === "Yes",
+      },
+      {
+        key: "monthlyPayroll",
+        label: "Monthly payroll total",
+        when: (d) => d.hasEmployees === "Yes",
+      },
+    ],
+    5: [
+      {
+        key: "lastYearFiled",
+        label: "Last year filed",
+        when: (d) => d.filedBefore === "Yes",
+      },
+    ],
+  };
+
+  const missingForStep = (s: TaxStep): string[] =>
+    REQUIRED[s]
+      .filter((f) => (!f.when || f.when(formData)) && !formData[f.key]?.trim())
+      .map((f) => f.label);
+
   const prevStep = () => {
+    setMissing([]);
     if (step > 1) setStep((s) => (s - 1) as TaxStep);
   };
 
   const handleNext = async () => {
+    // Block until the current step's required fields are filled.
+    const gaps = missingForStep(step);
+    if (gaps.length > 0) {
+      setMissing(gaps);
+      return;
+    }
+    setMissing([]);
+
     if (step < 5) {
       setStep((s) => (s + 1) as TaxStep);
       return;
@@ -158,6 +213,16 @@ export function TaxTab() {
         {step === 4 && <Step4 formData={formData} setFormData={setFormData} />}
         {step === 5 && <Step5 formData={formData} setFormData={setFormData} />}
       </div>
+
+      {/* Validation errors */}
+      {missing.length > 0 && (
+        <div className="w-full max-w-4xl px-2 mb-3">
+          <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            Please fill in the required field{missing.length > 1 ? "s" : ""}:{" "}
+            {missing.join(", ")}.
+          </div>
+        </div>
+      )}
 
       {/* Footer Navigation */}
       <div className="flex items-center justify-between w-full max-w-4xl px-2">
@@ -316,7 +381,7 @@ function Step2({ formData, setFormData }: StepProps) {
 
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-app-text-light">Tax Identification Number (TIN)</label>
+          <label className="text-sm font-medium text-app-text-light">Tax Identification Number (TIN) <span className="text-red-400">*</span></label>
           <input 
             type="text" 
             value={formData.tin}
@@ -374,7 +439,7 @@ function Step2({ formData, setFormData }: StepProps) {
       {formData.isVatRegistered === "Yes" && (
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-app-text-light">VAT registration number</label>
+            <label className="text-sm font-medium text-app-text-light">VAT registration number <span className="text-red-400">*</span></label>
             <input
               type="text"
               value={formData.vatNumber}
@@ -577,7 +642,7 @@ function Step4({ formData, setFormData }: StepProps) {
         <>
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-app-text-light">Number of employees</label>
+              <label className="text-sm font-medium text-app-text-light">Number of employees <span className="text-red-400">*</span></label>
               <input
                 type="number"
                 min="0"
@@ -590,7 +655,7 @@ function Step4({ formData, setFormData }: StepProps) {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-app-text-light">Monthly payroll total</label>
+              <label className="text-sm font-medium text-app-text-light">Monthly payroll total <span className="text-red-400">*</span></label>
               <input
                 type="text"
                 inputMode="numeric"

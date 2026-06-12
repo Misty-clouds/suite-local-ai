@@ -15,6 +15,7 @@ import {
   Eye,
   Download,
   Link,
+  Share2,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -66,6 +67,24 @@ export default function DocumentsPage() {
       load();
     } catch {
       /* ignore */
+    }
+  }
+
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  async function shareDocument(doc: DocumentItem) {
+    setOpenActionIndex(null);
+    try {
+      const url = await documentsApi.share(doc.id);
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareNotice("Share link copied to clipboard");
+      } catch {
+        setShareNotice(url);
+      }
+      setTimeout(() => setShareNotice(null), 4000);
+    } catch {
+      setShareNotice("Could not create share link");
+      setTimeout(() => setShareNotice(null), 4000);
     }
   }
 
@@ -127,7 +146,7 @@ export default function DocumentsPage() {
   }));
 
   function handleRowAction(
-    action: "view" | "download" | "link" | "rename" | "delete",
+    action: "view" | "download" | "share" | "link" | "rename" | "delete",
     doc: (typeof documents)[number],
   ) {
     setOpenActionIndex(null);
@@ -136,6 +155,9 @@ export default function DocumentsPage() {
       case "view":
       case "download":
         void openDocument(doc.raw);
+        return;
+      case "share":
+        void shareDocument(doc.raw);
         return;
       case "delete":
         void deleteDocument(doc.raw);
@@ -149,6 +171,12 @@ export default function DocumentsPage() {
   return (
     <>
       <Header />
+
+      {shareNotice && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-[#272727] bg-[#161616] px-4 py-2.5 text-sm text-white shadow-xl">
+          {shareNotice}
+        </div>
+      )}
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-track-[#0A0A0A] scrollbar-thumb-[#272727]">
@@ -330,6 +358,15 @@ export default function DocumentsPage() {
                         >
                           <Eye size={16} className="text-zinc-400" />
                           View
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleRowAction("share", doc)}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-white/5"
+                        >
+                          <Share2 size={16} className="text-zinc-400" />
+                          Share link
                         </button>
                         <button
                           type="button"

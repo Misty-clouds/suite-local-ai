@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import type { BudgetPeriod, CreateBudgetInput } from "@suite/types";
 import { budgetsApi } from "@/lib/budgets-api";
+import { CATEGORIES } from "@/lib/categories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CreateBudgetModalProps {
@@ -12,8 +13,6 @@ interface CreateBudgetModalProps {
   onCreated?: () => void;
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const CATEGORIES = ["Payroll", "Marketing", "Operations", "Software", "Travel", "Human Resources"];
 
 const PERIODS = ["Weekly", "Monthly", "Quarterly", "Yearly", "+ Custom"] as const;
 

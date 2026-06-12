@@ -16,6 +16,7 @@ import { FaMoneyBill } from "react-icons/fa";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import type { Budget } from "@suite/types";
 import { budgetsApi } from "@/lib/budgets-api";
+import { plaidApi } from "@/lib/plaid-api";
 import { CreateBudgetModal } from "../components/CreateBudgetModal";
 import { BudgetDetailsDrawer } from "../components/BudgetDetailsDrawer";
 
@@ -388,6 +389,7 @@ export function BudgetTab() {
   const [selectedBudget, setSelectedBudget] = useState<BudgetCard | null>(null);
 
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -395,7 +397,17 @@ export function BudgetTab() {
     setLoading(true);
     setError(null);
     try {
-      setBudgets(await budgetsApi.list());
+      const [list, txns] = await Promise.all([
+        budgetsApi.list(),
+        plaidApi.listTransactions().catch(() => []),
+      ]);
+      setBudgets(list);
+      // Total spent = all expense (outflow) transactions.
+      setTotalExpenses(
+        txns
+          .filter((t) => t.direction === "outflow")
+          .reduce((s, t) => s + t.amount, 0),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load budgets");
     } finally {
@@ -414,9 +426,11 @@ export function BudgetTab() {
       c.category.toLowerCase().includes(search.toLowerCase()),
   );
 
-  // ── Live stats computed from the loaded budgets ─────────────────────────────
-  const totalBudget = budgets.reduce((s, b) => s + b.amount, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
+  // ── Live stats ──────────────────────────────────────────────────────────────
+  // Total spent mirrors total expenses (all outflow transactions); health is the
+  // intensity of the gap between what's been spent and what's allocated.
+  const totalBudget = budgets.reduce((s, b) => s + (b.amount ?? 0), 0);
+  const totalSpent = totalExpenses;
   const remaining = Math.max(0, totalBudget - totalSpent);
   const usedPct = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
   const health = {
@@ -424,7 +438,21 @@ export function BudgetTab() {
     needsAttention: budgets.filter((b) => b.status === "needs_attention").length,
     exceeded: budgets.filter((b) => b.status === "exceeded").length,
   };
-  const healthy = health.onTrack;
+
+  const healthLabel =
+    totalBudget === 0
+      ? "No budget set"
+      : usedPct > 100
+        ? "Over budget"
+        : usedPct >= 80
+          ? "Needs attention"
+          : "Healthy";
+  const healthSub =
+    totalBudget === 0
+      ? "Add a budget to track health"
+      : usedPct > 100
+        ? `${usedPct - 100}% over allocation`
+        : `${100 - usedPct}% headroom left`;
 
   const stats = [
     {
@@ -438,21 +466,21 @@ export function BudgetTab() {
       icon: "$",
       title: "Total spent",
       value: money(totalSpent),
-      subtext: `${usedPct}% of budget used`,
+      subtext: totalBudget > 0 ? `${usedPct}% of budget used` : "Total expenses",
       noChange: true,
     },
     {
       icon: "$",
       title: "Remaining",
       value: money(remaining),
-      subtext: `${100 - usedPct}% still available`,
+      subtext: `${Math.max(0, 100 - usedPct)}% still available`,
       noChange: true,
     },
     {
       icon: "♥",
       title: "Budget health",
-      value: `${healthy}/${budgets.length || 0}`,
-      subtext: `${health.needsAttention + health.exceeded} need attention`,
+      value: healthLabel,
+      subtext: healthSub,
       noChange: true,
     },
   ];

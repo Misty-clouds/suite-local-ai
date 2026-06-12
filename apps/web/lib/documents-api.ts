@@ -45,6 +45,12 @@ export const documentsApi = {
     );
     return res.data.content;
   },
+  /** Returns a public, shareable link to the document. */
+  async share(id: string): Promise<string> {
+    const res = await api.post<{ token: string }>(`/documents/${id}/share`, {});
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5050";
+    return `${base}/documents/shared/${res.data.token}`;
+  },
 };
 
 /** Read a File as a base64 data URL. */

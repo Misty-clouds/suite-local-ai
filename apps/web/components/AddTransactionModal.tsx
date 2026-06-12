@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { X, ChevronDown, Loader2, Paperclip } from "lucide-react";
 import { plaidApi } from "@/lib/plaid-api";
+import { CATEGORIES } from "@/lib/categories";
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -10,15 +11,6 @@ interface AddTransactionModalProps {
   onCreated?: () => void;
 }
 
-const CATEGORIES = [
-  "Client payment",
-  "Tool",
-  "Subscription",
-  "Marketing",
-  "Salary",
-  "Office",
-  "Other",
-];
 const METHODS = ["Stripe", "Card", "Bank Transfer", "Cash"];
 
 export default function AddTransactionModal({
@@ -27,7 +19,7 @@ export default function AddTransactionModal({
   onCreated,
 }: AddTransactionModalProps) {
   const [type, setType] = useState<"Income" | "Expenses">("Income");
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState(METHODS[0]);

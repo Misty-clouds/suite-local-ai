@@ -14,6 +14,7 @@ export type DocumentItemDocument = HydratedDocument<DocumentItem>;
       delete ret._id;
       delete ret.owner;
       delete ret.dataUrl; // large — fetched on demand only
+      delete ret.storageKey; // internal R2 key
       return ret;
     },
   },
@@ -37,6 +38,14 @@ export class DocumentItem {
 
   @Prop({ trim: true })
   sourceUrl?: string;
+
+  // Cloudflare R2 object key (set when R2 storage is configured).
+  @Prop({ trim: true })
+  storageKey?: string;
+
+  // Public, unguessable token for share links.
+  @Prop({ index: true, sparse: true })
+  shareToken?: string;
 }
 
 export const DocumentItemSchema = SchemaFactory.createForClass(DocumentItem);
