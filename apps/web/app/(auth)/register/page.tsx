@@ -19,15 +19,36 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState({
+    fullName: false,
+    email: false,
+    password: false,
+  });
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isPasswordValid = password.length >= 8;
   const isFormValid =
     fullName.trim().length > 0 && isEmailValid && isPasswordValid;
 
+  const nameError =
+    touched.fullName && fullName.trim().length === 0
+      ? "Please enter your full name"
+      : "";
+  const emailError =
+    touched.email && !isEmailValid ? "Enter a valid email address" : "";
+  const passwordError =
+    touched.password && !isPasswordValid
+      ? "Password must be at least 8 characters"
+      : "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || submitting) return;
+    if (submitting) return;
+    if (!isFormValid) {
+      // Reveal every field's error so the user sees what's wrong.
+      setTouched({ fullName: true, email: true, password: true });
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -54,6 +75,8 @@ export default function RegisterPage() {
             label="Full name"
             value={fullName}
             onChange={setFullName}
+            onBlur={() => setTouched((t) => ({ ...t, fullName: true }))}
+            error={nameError}
             autoComplete="name"
           />
           <AuthField
@@ -62,6 +85,8 @@ export default function RegisterPage() {
             type="email"
             value={email}
             onChange={setEmail}
+            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+            error={emailError}
             autoComplete="email"
           />
           <AuthPasswordField
@@ -69,12 +94,15 @@ export default function RegisterPage() {
             label="Password"
             value={password}
             onChange={setPassword}
+            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+            error={passwordError}
+            hint={!passwordError ? "Use at least 8 characters" : undefined}
             autoComplete="new-password"
           />
           {error && <p className="text-[12px] text-[#FF8080]">{error}</p>}
         </div>
 
-        <AuthButton disabled={!isFormValid || submitting}>
+        <AuthButton disabled={submitting}>
           {submitting ? "Creating account…" : "Sign up"}
         </AuthButton>
 

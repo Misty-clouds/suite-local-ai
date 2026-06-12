@@ -28,10 +28,24 @@ interface FieldProps {
   type?: string;
   placeholder?: string;
   autoComplete?: string;
+  error?: string;
+  hint?: string;
+  onBlur?: () => void;
 }
 
 const fieldClass =
-  "w-full rounded-[6px] border border-[#222222] bg-[#1a1a1a] px-3.5 text-[14px] text-white placeholder:text-[#6b7280] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-colors focus:border-[#3a3a3a] focus:outline-none";
+  "w-full rounded-[6px] border bg-[#1a1a1a] px-3.5 text-[14px] text-white placeholder:text-[#6b7280] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-colors focus:outline-none";
+
+const borderClass = (error?: string) =>
+  error
+    ? "border-[#FF8080] focus:border-[#FF8080]"
+    : "border-[#222222] focus:border-[#3a3a3a]";
+
+function FieldMessage({ error, hint }: { error?: string; hint?: string }) {
+  if (error) return <p className="text-[12px] text-[#FF8080]">{error}</p>;
+  if (hint) return <p className="text-[12px] text-[#6e7b82]">{hint}</p>;
+  return null;
+}
 
 export function AuthField({
   id,
@@ -41,6 +55,9 @@ export function AuthField({
   type = "text",
   placeholder,
   autoComplete,
+  error,
+  hint,
+  onBlur,
 }: FieldProps) {
   return (
     <div className="flex w-full flex-col gap-1">
@@ -52,10 +69,13 @@ export function AuthField({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={`${fieldClass} h-[46px]`}
+        aria-invalid={!!error}
+        className={`${fieldClass} ${borderClass(error)} h-[46px]`}
       />
+      <FieldMessage error={error} hint={hint} />
     </div>
   );
 }
@@ -67,6 +87,9 @@ export function AuthPasswordField({
   onChange,
   placeholder,
   autoComplete,
+  error,
+  hint,
+  onBlur,
 }: Omit<FieldProps, "type">) {
   const [show, setShow] = useState(false);
   return (
@@ -80,9 +103,11 @@ export function AuthPasswordField({
           type={show ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className={`${fieldClass} h-[46px] pr-11`}
+          aria-invalid={!!error}
+          className={`${fieldClass} ${borderClass(error)} h-[46px] pr-11`}
         />
         <button
           type="button"
@@ -93,6 +118,7 @@ export function AuthPasswordField({
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
+      <FieldMessage error={error} hint={hint} />
     </div>
   );
 }

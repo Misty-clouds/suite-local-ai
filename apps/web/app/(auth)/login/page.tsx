@@ -18,13 +18,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isFormValid = isEmailValid && password.length > 0;
 
+  const emailError =
+    touched.email && !isEmailValid ? "Enter a valid email address" : "";
+  const passwordError =
+    touched.password && password.length === 0 ? "Password is required" : "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || submitting) return;
+    if (submitting) return;
+    if (!isFormValid) {
+      setTouched({ email: true, password: true });
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -49,6 +59,8 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={setEmail}
+            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+            error={emailError}
             autoComplete="email"
           />
           <AuthPasswordField
@@ -56,6 +68,8 @@ export default function LoginPage() {
             label="Password"
             value={password}
             onChange={setPassword}
+            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+            error={passwordError}
             autoComplete="current-password"
           />
           <Link
@@ -69,7 +83,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <AuthButton disabled={!isFormValid || submitting}>
+        <AuthButton disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
         </AuthButton>
 
