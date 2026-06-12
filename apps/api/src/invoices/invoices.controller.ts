@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -22,6 +23,7 @@ export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Post()
+  @Activity('Created an invoice', 'invoice')
   create(@CurrentUser('userId') userId: string, @Body() dto: CreateInvoiceDto) {
     return this.invoicesService.create(userId, dto);
   }
@@ -56,6 +58,7 @@ export class InvoicesController {
 
   @Post(':id/send')
   @HttpCode(HttpStatus.OK)
+  @Activity('Sent an invoice', 'invoice')
   send(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     return this.invoicesService.send(userId, id);
   }
@@ -67,6 +70,7 @@ export class InvoicesController {
   }
 
   @Post(':id/payments')
+  @Activity('Recorded a payment', 'payment')
   recordPayment(
     @CurrentUser('userId') userId: string,
     @Param('id') id: string,
@@ -77,12 +81,14 @@ export class InvoicesController {
 
   @Post(':id/mark-paid')
   @HttpCode(HttpStatus.OK)
+  @Activity('Marked an invoice as paid', 'payment')
   markPaid(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     return this.invoicesService.markPaid(userId, id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @Activity('Deleted an invoice', 'invoice')
   async remove(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     await this.invoicesService.remove(userId, id);
     return { message: 'Invoice deleted' };

@@ -12,6 +12,7 @@ import {
 import { concat, from, Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { SkipTransform } from '../common/decorators/skip-transform.decorator';
 import { GeminiService } from '../gemini/gemini.service';
 import { ReportsService } from '../reports/reports.service';
@@ -36,6 +37,7 @@ export class AgentController {
 
   @Post('financial-review')
   @HttpCode(HttpStatus.OK)
+  @Activity('Ran a financial review', 'agent')
   async startReview(@CurrentUser('userId') userId: string) {
     const runId = await this.orchestrator.start(userId);
     return { runId };

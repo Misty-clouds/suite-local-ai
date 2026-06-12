@@ -5,18 +5,45 @@ import { Clock, Users as UsersIcon, Trophy, Plus, Bell } from "lucide-react";
 import { FaRobot } from "react-icons/fa";
 import { LuSparkle } from "react-icons/lu";
 import { FaRegLightbulb } from "react-icons/fa";
-import type { Client, FinancialReport, ActionTask } from "@suite/types";
+import type { Client, FinancialReport } from "@suite/types";
 import { clientsApi } from "@/lib/clients-api";
 import { reportsApi } from "@/lib/reports-api";
-import { tasksApi } from "@/lib/tasks-api";
+import { activitiesApi, type ActivityItem } from "@/lib/activities-api";
 
 const TROPHY_COLORS = ["#FFB700", "#909090", "#E26A00", "#66A4FF", "#4ADE80"];
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  transaction: "Transaction",
+  document: "Document",
+  budget: "Budget",
+  invoice: "Invoice",
+  payment: "Payment",
+  client: "Client",
+  account: "Account",
+  agent: "AI Agent",
+  tax: "Tax",
+  profile: "Profile",
+};
+const ACTIVITY_COLOR: Record<string, string> = {
+  transaction: "#4ADE80",
+  document: "#66A4FF",
+  budget: "#FFB700",
+  invoice: "#A78BFA",
+  payment: "#4ADE80",
+  client: "#E26A00",
+  account: "#66A4FF",
+  agent: "#A78BFA",
+  tax: "#F87171",
+  profile: "#909090",
+};
 
 function timeAgo(iso?: string): string {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return "just now";
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
   if (h < 24) return `${h}hr ago`;
   return `${Math.floor(h / 24)}d ago`;
 }
@@ -24,12 +51,12 @@ function timeAgo(iso?: string): string {
 export default function RightPanel() {
   const [clients, setClients] = useState<Client[]>([]);
   const [report, setReport] = useState<FinancialReport | null>(null);
-  const [tasks, setTasks] = useState<ActionTask[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     clientsApi.list().then(setClients).catch(() => setClients([]));
     reportsApi.latest().then(setReport).catch(() => setReport(null));
-    tasksApi.list().then(setTasks).catch(() => setTasks([]));
+    activitiesApi.list().then(setActivities).catch(() => setActivities([]));
   }, []);
 
   const insights: string[] = report
@@ -137,35 +164,38 @@ export default function RightPanel() {
         </div>
 
         <div className="space-y-6 relative p-3 h-full">
-          {tasks.length === 0 ? (
+          {activities.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-[46px] w-[46px] items-center justify-center rounded-xl bg-[#1C1C1C] border border-[#2A2A2A] text-zinc-400">
                 <Bell size={20} />
               </div>
               <p className="text-[13px] leading-relaxed text-[#6E7B82] max-w-[220px]">
-                Your recent activity will appear here once the agent creates
-                tasks.
+                Your recent activity will appear here as you add transactions,
+                documents, invoices and more.
               </p>
             </div>
           ) : (
-            tasks.slice(0, 6).map((task) => (
-              <div key={task.id} className="flex gap-2 relative">
+            activities.slice(0, 8).map((a) => (
+              <div key={a.id} className="flex gap-2 relative">
                 <div className="relative mt-1">
-                  <div className="h-6 w-6 rounded-full border border-zinc-700 bg-[#1C1C1C] flex items-center justify-center text-[#66A4FF]">
+                  <div
+                    className="h-6 w-6 rounded-full border border-zinc-700 bg-[#1C1C1C] flex items-center justify-center"
+                    style={{ color: ACTIVITY_COLOR[a.type ?? ""] ?? "#66A4FF" }}
+                  >
                     <LuSparkle size={12} />
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col gap-1.5">
                   <div className="flex justify-between items-start mb-0.5">
                     <h4 className="text-sm font-semibold text-[#DEDEDE]">
-                      {task.status === "done" ? "Task completed" : "Action item"}
+                      {ACTIVITY_LABEL[a.type ?? ""] ?? "Activity"}
                     </h4>
                     <span className="text-[12px] text-[#6E7B82]">
-                      {timeAgo(task.createdAt)}
+                      {timeAgo(a.createdAt)}
                     </span>
                   </div>
                   <p className="text-sm text-[#6E7B82] leading-snug line-clamp-2">
-                    {task.title}
+                    {a.message}
                   </p>
                 </div>
               </div>

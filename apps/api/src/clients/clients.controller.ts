@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -20,6 +21,7 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Post()
+  @Activity('Added a client', 'client')
   create(@CurrentUser('userId') userId: string, @Body() dto: CreateClientDto) {
     return this.clientsService.create(userId, dto);
   }
@@ -48,6 +50,7 @@ export class ClientsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @Activity('Removed a client', 'client')
   async remove(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     await this.clientsService.remove(userId, id);
     return { message: 'Client deleted' };

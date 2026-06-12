@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { BudgetsService } from './budgets.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
@@ -21,6 +22,7 @@ export class BudgetsController {
   constructor(private readonly budgetsService: BudgetsService) {}
 
   @Post()
+  @Activity('Created a budget', 'budget')
   create(@CurrentUser('userId') userId: string, @Body() dto: CreateBudgetDto) {
     return this.budgetsService.create(userId, dto);
   }
@@ -69,6 +71,7 @@ export class BudgetsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @Activity('Deleted a budget', 'budget')
   async remove(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     await this.budgetsService.remove(userId, id);
     return { message: 'Budget deleted' };

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { SkipTransform } from '../common/decorators/skip-transform.decorator';
 import { DocumentsService } from './documents.service';
@@ -65,6 +66,7 @@ export class DocumentsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Activity('Uploaded a document', 'document')
   create(
     @CurrentUser('userId') userId: string,
     @Body() dto: CreateDocumentDto,
@@ -74,6 +76,7 @@ export class DocumentsController {
 
   @Post(':id/share')
   @HttpCode(HttpStatus.OK)
+  @Activity('Shared a document', 'document')
   async share(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     const token = await this.documents.ensureShareToken(userId, id);
     return { token };
@@ -81,6 +84,7 @@ export class DocumentsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @Activity('Deleted a document', 'document')
   async remove(@CurrentUser('userId') userId: string, @Param('id') id: string) {
     await this.documents.remove(userId, id);
     return { message: 'Document deleted' };

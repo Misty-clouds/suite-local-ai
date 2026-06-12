@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import { IsObject } from 'class-validator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { TaxService } from './tax.service';
 
 class SaveTaxProfileDto {
@@ -19,6 +20,7 @@ export class TaxController {
   }
 
   @Patch()
+  @Activity('Updated tax settings', 'tax')
   async save(
     @CurrentUser('userId') userId: string,
     @Body() dto: SaveTaxProfileDto,

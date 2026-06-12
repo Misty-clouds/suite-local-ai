@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { PlaidService } from './plaid.service';
 import { ExchangePublicTokenDto } from './dto/exchange.dto';
@@ -26,6 +27,7 @@ export class PlaidController {
 
   @Post('exchange')
   @HttpCode(HttpStatus.OK)
+  @Activity('Connected a bank account', 'account')
   exchange(
     @CurrentUser('userId') userId: string,
     @Body() dto: ExchangePublicTokenDto,
@@ -72,6 +74,7 @@ export class AccountsController {
 
   @Post('transactions')
   @HttpCode(HttpStatus.CREATED)
+  @Activity('Added a transaction', 'transaction')
   createTransaction(
     @CurrentUser('userId') userId: string,
     @Body() dto: CreateTransactionDto,

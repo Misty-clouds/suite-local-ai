@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { ActivityModule } from './activity/activity.module';
+import { ActivityInterceptor } from './activity/activity.interceptor';
 import { UsersModule } from './users/users.module';
 import { ClientsModule } from './clients/clients.module';
 import { InvoicesModule } from './invoices/invoices.module';
@@ -45,6 +47,7 @@ import { TaxModule } from './tax/tax.module';
     FivetranModule,
     DocumentsModule,
     TaxModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [
@@ -53,6 +56,7 @@ import { TaxModule } from './tax/tax.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: ActivityInterceptor },
   ],
 })
 export class AppModule {}

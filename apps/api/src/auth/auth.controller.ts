@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { Activity } from '../activity/decorators/activity.decorator';
 import { Public } from './decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -79,6 +80,7 @@ export class AuthController {
   }
 
   @Patch('me')
+  @Activity('Updated profile', 'profile')
   updateProfile(
     @CurrentUser('userId') userId: string,
     @Body() dto: UpdateProfileDto,
