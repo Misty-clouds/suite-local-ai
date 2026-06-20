@@ -1,6 +1,6 @@
 # Suite — Autonomous Financial Operations Agent
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
 > An autonomous agent that runs a small business's entire month-end financial
 > review — powered by **Gemini** on **Google Cloud**, with the **Fivetran MCP
@@ -133,6 +133,6 @@ docker compose up --build
 
 ## License
 
-This project is open source under the **[MIT License](./LICENSE)** — you are
+This project is open source under the **[Apache License 2.0](./LICENSE)** — you are
 free to clone, modify, and use it. See the [LICENSE](./LICENSE) file for the
 full text.
