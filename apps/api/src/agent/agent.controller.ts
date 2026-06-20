@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   HttpCode,
@@ -14,14 +13,12 @@ import { map, switchMap } from 'rxjs/operators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Activity } from '../activity/decorators/activity.decorator';
 import { SkipTransform } from '../common/decorators/skip-transform.decorator';
-import { GeminiService } from '../gemini/gemini.service';
 import { ReportsService } from '../reports/reports.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AgentRunsService } from './agent-runs.service';
 import { AgentEventsService, RunSnapshot } from './agent-events.service';
 import { ReviewOrchestratorService } from './review-orchestrator.service';
-import { ChatDto } from './dto/chat.dto';
 
 @Controller('agent')
 export class AgentController {
@@ -29,7 +26,6 @@ export class AgentController {
     private readonly runs: AgentRunsService,
     private readonly events: AgentEventsService,
     private readonly orchestrator: ReviewOrchestratorService,
-    private readonly gemini: GeminiService,
     private readonly reports: ReportsService,
     private readonly invoices: InvoicesService,
     private readonly budgets: BudgetsService,
@@ -43,18 +39,15 @@ export class AgentController {
     return { runId };
   }
 
-  @Post('chat')
-  @HttpCode(HttpStatus.OK)
-  async chat(
+  /**
+   * Returns the user's live financial context as a plain-text block. The AI
+   * reply itself is generated on-device by the QVAC SDK in the desktop app
+   * (window.qvac.chat) — no inference happens on the server.
+   */
+  @Get('chat-context')
+  async chatContext(
     @CurrentUser('userId') userId: string,
-    @Body() dto: ChatDto,
-  ): Promise<{ reply: string }> {
-    if (!this.gemini.configured) {
-      return {
-        reply:
-          'AI is not configured yet. Add GOOGLE_CLOUD_PROJECT to enable Suite AI.',
-      };
-    }
+  ): Promise<{ context: string }> {
     const [report, invSummary, overdue, budgetSummary] = await Promise.all([
       this.reports.latest(userId),
       this.invoices.summary(userId),
@@ -85,8 +78,7 @@ export class AgentController {
       `- Budgets: $${budgetSummary.totalAllocated} allocated, $${budgetSummary.totalSpent} spent, $${budgetSummary.remaining} remaining, ${budgetSummary.exceeded} exceeded, ${budgetSummary.needsAttention} need attention.`,
     );
 
-    const reply = await this.gemini.chat(dto.message, lines.join('\n'));
-    return { reply };
+    return { context: lines.join('\n') };
   }
 
   @Get('runs/:id')

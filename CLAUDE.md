@@ -2,16 +2,23 @@
 
 ## Architecture
 
-Turborepo + pnpm workspace monorepo with 4 deployable apps and 5 shared packages.
+Turborepo + pnpm workspace monorepo with 5 deployable apps and 5 shared packages.
 
 ### Apps
 
 | App | Path | Framework | Port | Domain |
 |-----|------|-----------|------|--------|
+| Desktop | `apps/desktop` | Electron + QVAC SDK | — | — |
 | Web (dashboard) | `apps/web` | Next.js 16.1.6 | 3001 | `app.suite.cloudstech.org` |
 | Admin (super-admin) | `apps/admin` | Next.js 16.2.1 | 3002 | `cp.suite.cloudstech.org` |
 | API | `apps/api` | NestJS 11 | 5050 | `api.suite.cloudstech.org` |
 | Mobile | `apps/mobile` | Flutter | — | — |
+
+**AI brain:** All inference runs **on-device via the QVAC SDK (`@qvac/sdk`)** in
+the Electron **main process** (`apps/desktop/electron/qvac.ts`), exposed to the
+web UI over IPC as `window.qvac`. There is no cloud AI. The NestJS API is
+deterministic and AI-free; it only supplies financial context (`GET
+/agent/chat-context`). Model is set via `QVAC_MODEL` (default `QWEN3_1_7B_INST_Q4`).
 
 **IMPORTANT:** `apps/admin` uses Next.js 16.2.x which has breaking changes vs 16.1.x. Do NOT upgrade `apps/web` to 16.2.x without testing. Do NOT force all apps to the same Next.js version.
 

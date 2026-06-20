@@ -27,9 +27,24 @@ export const agentApi = {
     return res.data.runId;
   },
 
+  /**
+   * Answers a finance question. Inference runs entirely on-device via the
+   * QVAC SDK in the Suite desktop app (`window.qvac.chat`); the server only
+   * supplies the user's live financial context. In a plain browser (no
+   * desktop bridge) we return a hint to open the desktop app.
+   */
   async chat(message: string): Promise<string> {
-    const res = await api.post<{ reply: string }>("/agent/chat", { message });
-    return res.data.reply;
+    if (typeof window === "undefined" || !window.qvac?.available) {
+      return "On-device AI runs in the Suite desktop app. Open Suite Desktop to chat with Suite AI — your data never leaves your machine.";
+    }
+    let context = "";
+    try {
+      const res = await api.get<{ context: string }>("/agent/chat-context");
+      context = res.data.context;
+    } catch {
+      // No context is fine — the assistant can still answer generally.
+    }
+    return window.qvac.chat(message, context);
   },
 
   /**

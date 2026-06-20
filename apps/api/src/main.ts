@@ -10,7 +10,8 @@ import { AppModule } from './app.module';
  * On hosts without a writable key file (pxxl, Railway, Render…), supply the GCP
  * service-account JSON via the GOOGLE_CREDENTIALS_JSON env var. We materialise
  * it to a temp file and point GOOGLE_APPLICATION_CREDENTIALS at it so the
- * BigQuery / Vertex AI SDKs pick it up automatically.
+ * (optional, disclosed) BigQuery SDK picks it up automatically. AI inference
+ * does not run here — it is on-device via the QVAC SDK in the desktop app.
  */
 function ensureGoogleCreds(): void {
   const json = process.env.GOOGLE_CREDENTIALS_JSON;

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BigQueryService } from '../bigquery/bigquery.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { FivetranService } from '../fivetran/fivetran.service';
-import { GeminiService } from '../gemini/gemini.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PlaidService } from '../plaid/plaid.service';
 import { ReportsService } from '../reports/reports.service';
@@ -43,8 +42,9 @@ const REVIEW_STEPS: { key: string; label: string }[] = [
 /**
  * Deterministic local implementation of the financial-review workflow. Runs
  * the 13 visible steps against real data and emits live snapshots over SSE.
- * The ADK/Gemini agent (with the Fivetran MCP) replaces this brain later;
- * the gateway + UI contract stays identical.
+ * Runs fully offline with no cloud AI — the numeric work is deterministic and
+ * the narrative summary/recommendations are generated on-device by the QVAC
+ * SDK (in the desktop app) or via the deterministic heuristics below.
  */
 @Injectable()
 export class ReviewOrchestratorService {
@@ -56,7 +56,6 @@ export class ReviewOrchestratorService {
     private readonly invoices: InvoicesService,
     private readonly fivetran: FivetranService,
     private readonly bigquery: BigQueryService,
-    private readonly gemini: GeminiService,
     private readonly reports: ReportsService,
     private readonly tasks: TasksService,
     private readonly runs: AgentRunsService,
@@ -278,7 +277,10 @@ export class ReviewOrchestratorService {
         .slice(0, 5)
         .map(([category, amount]) => ({ category, amount }));
 
-      // Gemini turns the numbers into a summary + recommendations.
+      // Deterministic, fully-offline summary + recommendations. The desktop
+      // app can additionally generate a richer narrative on-device with the
+      // QVAC SDK (window.qvac.insights) and patch it onto the report later.
+      void topCategories; // retained for the on-device insights context
       let summaryText = '';
       let recs: {
         title: string;
@@ -287,40 +289,8 @@ export class ReviewOrchestratorService {
       }[] = [];
       await runStep(
         'recommend',
-        'Generating insights & recommendations (Gemini)',
-        async () => {
-          if (this.gemini.configured) {
-            try {
-              const insights = await this.gemini.insights({
-                revenue,
-                expenses,
-                cashFlow,
-                taxEstimate,
-                topCategories,
-                anomalies,
-              });
-              summaryText =
-                insights.summaryText ||
-                this.buildSummary(
-                  revenue,
-                  expenses,
-                  cashFlow,
-                  anomalies.length,
-                );
-              recs = insights.recommendations.length
-                ? insights.recommendations
-                : this.buildRecommendations(
-                    categoryTotals,
-                    expenses,
-                    anomalies,
-                  );
-              return `Gemini generated ${recs.length} recommendations`;
-            } catch (e) {
-              this.logger.warn(
-                `Gemini failed, using heuristics: ${e instanceof Error ? e.message : String(e)}`,
-              );
-            }
-          }
+        'Generating recommendations',
+        () => {
           summaryText = this.buildSummary(
             revenue,
             expenses,
@@ -332,7 +302,7 @@ export class ReviewOrchestratorService {
         },
       );
 
-      // Persist the report (with the Gemini summary) so recs/tasks can link.
+      // Persist the report (with the deterministic summary) so recs/tasks can link.
       const report = await this.reports.createReport(owner, {
         period,
         revenue,
