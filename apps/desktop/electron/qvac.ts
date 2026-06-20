@@ -11,6 +11,8 @@
  * instruct model that downloads out-of-the-box.
  */
 
+import * as audit from './audit';
+
 // The SDK ships as an ESM package with native (Bare) addons. Import it through
 // an indirection so TypeScript's CommonJS emit doesn't rewrite it to require().
 const dynamicImport = new Function(
@@ -57,11 +59,15 @@ type Sdk = Awaited<ReturnType<typeof dynamicImport>>;
 
 let sdkPromise: Promise<Sdk> | null = null;
 let modelIdPromise: Promise<string> | null = null;
+const MODEL_NAME = process.env.QVAC_MODEL ?? DEFAULT_MODEL;
 const status: QvacStatus = {
   state: 'idle',
-  model: process.env.QVAC_MODEL ?? DEFAULT_MODEL,
+  model: MODEL_NAME,
   progress: 0,
 };
+
+// Record a session marker so a single demo run is easy to slice from the log.
+audit.sessionStart(MODEL_NAME);
 
 function loadSdk(): Promise<Sdk> {
   if (!sdkPromise) sdkPromise = dynamicImport('@qvac/sdk');
@@ -82,6 +88,7 @@ function ensureModel(): Promise<string> {
   if (!modelIdPromise) {
     status.state = 'loading';
     modelIdPromise = (async () => {
+      const startedAt = Date.now();
       try {
         const sdk = await loadSdk();
         const modelId = await sdk.loadModel({
@@ -93,11 +100,24 @@ function ensureModel(): Promise<string> {
         });
         status.state = 'ready';
         status.progress = 1;
+        audit.modelLoad({
+          model: MODEL_NAME,
+          modelId,
+          ok: true,
+          durationMs: Date.now() - startedAt,
+        });
         return modelId;
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         status.state = 'error';
-        status.error = err instanceof Error ? err.message : String(err);
+        status.error = message;
         modelIdPromise = null; // allow a retry on the next call
+        audit.modelLoad({
+          model: MODEL_NAME,
+          ok: false,
+          durationMs: Date.now() - startedAt,
+          error: message,
+        });
         throw err;
       }
     })();
@@ -109,19 +129,64 @@ function ensureModel(): Promise<string> {
 export async function chat(message: string, context?: string): Promise<string> {
   const sdk = await loadSdk();
   const modelId = await ensureModel();
-  const run = sdk.completion({
+  const userContent = context ? `${context}\n\nQuestion: ${message}` : message;
+  const prompt = `${SYSTEM_PROMPT}\n\n${userContent}`;
+  const text = await runCompletion(sdk, 'chat', prompt, modelId, {
     modelId,
     history: [
       { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: context ? `${context}\n\nQuestion: ${message}` : message,
-      },
+      { role: 'user', content: userContent },
     ],
     stream: false,
   });
-  const text = await run.text;
   return text.trim() || "Sorry, I couldn't generate a response.";
+}
+
+/**
+ * Run one completion and write a structured audit record (prompt, prompt /
+ * generated tokens, TTFT, tokens/sec, total latency, backend device). The
+ * audit never alters the result the caller gets back.
+ */
+async function runCompletion(
+  sdk: Sdk,
+  kind: 'chat' | 'insights',
+  prompt: string,
+  modelId: string,
+  params: Parameters<Sdk['completion']>[0],
+): Promise<string> {
+  const startedAt = Date.now();
+  const run = sdk.completion(params);
+  try {
+    const text = await run.text;
+    const stats = await run.stats.catch(() => undefined);
+    audit.inference({
+      model: MODEL_NAME,
+      modelId,
+      kind,
+      requestId: run.requestId,
+      prompt,
+      totalMs: Date.now() - startedAt,
+      stats: {
+        timeToFirstTokenMs: stats?.timeToFirstToken,
+        tokensPerSecond: stats?.tokensPerSecond,
+        promptTokens: stats?.promptTokens,
+        generatedTokens: stats?.generatedTokens,
+        backendDevice: stats?.backendDevice,
+      },
+    });
+    return text;
+  } catch (err) {
+    audit.inferenceError({
+      model: MODEL_NAME,
+      modelId,
+      kind,
+      requestId: run.requestId,
+      prompt,
+      totalMs: Date.now() - startedAt,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 /** Turn the computed review numbers into a summary + recommendations on-device. */
@@ -142,12 +207,11 @@ Anomalies: ${JSON.stringify(ctx.anomalies.map((a) => a.detail).filter(Boolean))}
 Respond ONLY with JSON of the shape:
 {"summaryText": string, "recommendations": [{"title": string, "rationale": string, "severity": "info"|"warning"|"critical"}]}`;
 
-  const run = sdk.completion({
+  const raw = await runCompletion(sdk, 'insights', prompt, modelId, {
     modelId,
     history: [{ role: 'user', content: prompt }],
     stream: false,
   });
-  const raw = await run.text;
   return parseInsights(raw);
 }
 
@@ -189,10 +253,17 @@ export function getStatus(): QvacStatus {
 /** Free the model on app quit. */
 export async function unload(): Promise<void> {
   if (!modelIdPromise) return;
+  const startedAt = Date.now();
+  let modelId: string | undefined;
   try {
     const sdk = await loadSdk();
-    const modelId = await modelIdPromise;
+    modelId = await modelIdPromise;
     await sdk.unloadModel({ modelId });
+    audit.modelUnload({
+      model: MODEL_NAME,
+      modelId,
+      durationMs: Date.now() - startedAt,
+    });
   } catch {
     // best-effort on shutdown
   } finally {

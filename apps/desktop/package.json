@@ -25,6 +25,9 @@
   "build": {
     "appId": "org.cloudstech.suite.desktop",
     "productName": "Suite",
+    "asarUnpack": [
+      "**/node_modules/@qvac/**"
+    ],
     "files": [
       "dist/**/*"
     ],

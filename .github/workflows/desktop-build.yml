@@ -1,0 +1,61 @@
+name: Desktop Build (macOS)
+
+# Manual cloud build of the Electron desktop app. Trigger from the Actions tab
+# ("Run workflow"), wait for it to finish, then download the .dmg from the run's
+# Artifacts section. No local Electron / native toolchain required.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The desktop package bundles the web dashboard's standalone output
+      # (see extraResources in apps/desktop/package.json), so build web first.
+      - name: Build web dashboard
+        run: pnpm --filter @suite/web build
+
+      # Copy static assets + public into the standalone bundle so the embedded
+      # Next.js server can actually serve them.
+      - name: Assemble web standalone bundle
+        run: |
+          cp -R apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+          if [ -d apps/web/public ]; then
+            cp -R apps/web/public apps/web/.next/standalone/apps/web/public
+          fi
+
+      # Compile electron TS and package the .dmg. QVAC's native (Bare) addons
+      # are unpacked from asar via asarUnpack so they load at runtime.
+      - name: Package desktop app
+        working-directory: apps/desktop
+        run: pnpm package
+        env:
+          # Skip code signing — produces an unsigned .dmg. On first launch,
+          # right-click the app > Open to bypass Gatekeeper.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-desktop-macos
+          path: |
+            apps/desktop/release/*.dmg
+          if-no-files-found: error
+          retention-days: 14
