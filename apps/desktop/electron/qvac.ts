@@ -92,10 +92,15 @@ function ensureModel(): Promise<string> {
       try {
         const sdk = await loadSdk();
         const modelId = await sdk.loadModel({
-          modelSrc: resolveModelSrc(sdk) as never,
-          onProgress: (p: { progress?: number } | number) => {
-            const value = typeof p === 'number' ? p : (p?.progress ?? 0);
-            status.progress = value;
+          // resolveModelSrc returns either a built-in model descriptor or a raw
+          // modelSrc string; `any` lets the SDK's overloaded loadModel infer the
+          // right shape at the call site (descriptor vs. path/URL).
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          modelSrc: resolveModelSrc(sdk) as any,
+          // The SDK reports download progress as a 0..100 percentage; QvacStatus
+          // exposes 0..1, so normalize here.
+          onProgress: (p: { percentage?: number }) => {
+            status.progress = (p?.percentage ?? 0) / 100;
           },
         });
         status.state = 'ready';
