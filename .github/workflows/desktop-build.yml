@@ -1,14 +1,28 @@
-name: Desktop Build (macOS)
+name: Desktop Build
 
-# Manual cloud build of the Electron desktop app. Trigger from the Actions tab
-# ("Run workflow"), wait for it to finish, then download the .dmg from the run's
-# Artifacts section. No local Electron / native toolchain required.
+# Manual cloud build of the Electron desktop app for macOS, Windows and Linux.
+# Trigger from the Actions tab ("Run workflow"), wait for it to finish, then
+# download the installer for your OS from the run's Artifacts section. No local
+# Electron / native toolchain required.
 on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: suite-desktop-macos
+            pattern: apps/desktop/release/*.dmg
+          - os: windows-latest
+            artifact: suite-desktop-windows
+            pattern: apps/desktop/release/*.exe
+          - os: ubuntu-latest
+            artifact: suite-desktop-linux
+            pattern: apps/desktop/release/*.AppImage
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,29 +47,29 @@ jobs:
         run: pnpm --filter @suite/web build
 
       # Copy static assets + public into the standalone bundle so the embedded
-      # Next.js server can actually serve them.
+      # Next.js server can serve them. bash runs on all three runners.
       - name: Assemble web standalone bundle
+        shell: bash
         run: |
           cp -R apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
           if [ -d apps/web/public ]; then
             cp -R apps/web/public apps/web/.next/standalone/apps/web/public
           fi
 
-      # Compile electron TS and package the .dmg. QVAC's native (Bare) addons
-      # are unpacked from asar via asarUnpack so they load at runtime.
+      # Compile electron TS and package the installer. QVAC's native (Bare)
+      # addons are unpacked from asar via asarUnpack so they load at runtime.
       - name: Package desktop app
         working-directory: apps/desktop
         run: pnpm package
         env:
-          # Skip code signing — produces an unsigned .dmg. On first launch,
-          # right-click the app > Open to bypass Gatekeeper.
+          # Skip code signing — produces unsigned installers. On macOS, first
+          # launch needs right-click > Open to bypass Gatekeeper.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload .dmg artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: suite-desktop-macos
-          path: |
-            apps/desktop/release/*.dmg
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.pattern }}
           if-no-files-found: error
           retention-days: 14

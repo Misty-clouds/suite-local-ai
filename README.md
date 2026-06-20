@@ -97,6 +97,25 @@ The desktop app's Electron **main process** loads the GGUF model once via
 `@qvac/sdk` and exposes `chat` / `insights` to the renderer over IPC
 (`window.qvac`). The web dashboard calls that bridge instead of any cloud AI.
 
+## Download a prebuilt app (no toolchain needed)
+
+Don't want to build locally? Every desktop installer is built in the cloud via
+GitHub Actions for **macOS, Windows and Linux**:
+
+1. Open the **[Actions tab](../../actions/workflows/desktop-build.yml)** →
+   **Desktop Build** → **Run workflow** (or open the latest successful run).
+2. When the run finishes, scroll to its **Artifacts** section and download the
+   installer for your OS:
+   - `suite-desktop-macos` — `.dmg` (unsigned: first launch → right-click → **Open**)
+   - `suite-desktop-windows` — `.exe`
+   - `suite-desktop-linux` — `.AppImage`
+3. Install and launch. On **first launch** the QVAC SDK downloads the model
+   (`QVAC_MODEL`) once; after that, all AI runs **fully offline** on-device.
+
+> The workflow lives at `.github/workflows/desktop-build.yml`. It packages the
+> Electron app with electron-builder on native runners so QVAC's on-device
+> native addons match each platform.
+
 ## Quick start
 
 ### Prerequisites
